@@ -60,8 +60,8 @@ test.describe("Intake Flow — Full 12-Step Progression", () => {
   test("Step 7 Preparation renders", async ({ page }) => {
     await page.goto("/intake/preparation");
     await expect(page.locator(".chip")).toContainText("Step 7");
-    await expect(page.locator("h1")).toContainText("follow along");
-    await expect(page.locator("button:has-text('Start Instructions')")).toBeVisible();
+    await expect(page.locator("h1")).toContainText("chat");
+    await expect(page.locator("button:has-text('Start Conversation')")).toBeVisible();
   });
 
   test("Step 8 Motor Assessment renders", async ({ page }) => {

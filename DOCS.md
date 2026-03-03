@@ -57,7 +57,8 @@ Browser (Client)
     └── Fusion: 70% body + 30% face → ASD risk score
 
 Server (Amplify SSR / Lambda)
-├── POST /api/report/summary   → Amazon Bedrock Nova Lite
+├── POST /api/chat/conversation → Amazon Bedrock Nova Lite (voice agent)
+├── POST /api/report/summary    → Amazon Bedrock Nova Lite
 ├── POST /api/report/clinical   → Amazon Bedrock Cohere Command R+
 ├── POST /api/report/pdf        → pdf-lib PDF generation
 ├── POST /api/tts               → Amazon Polly
@@ -135,7 +136,7 @@ Server (Amplify SSR / Lambda)
 | 4 | `/intake/communication` | Speech recognition (child's voice) | `vocalizationScore` |
 | 5 | `/intake/visual-engagement` | Social vs non-social tap preference | `gazeScore` |
 | 6 | `/intake/behavioral-observation` | Free-play bubble pop reaction time | `motorScore`, `responseLatencyMs` |
-| 7 | `/intake/preparation` | Following spoken instructions (Polly TTS) | `vocalizationScore` |
+| 7 | `/intake/preparation` | Dynamic AI voice conversation (Bedrock + Polly + Web Speech API) | `gazeScore` (relevance), `motorScore`, `vocalizationScore`, `responseLatencyMs` |
 | 8 | `/intake/motor` | Tap-the-target motor coordination | `motorScore`, `responseLatencyMs` |
 | 9 | `/intake/audio` | Audio echo (Polly TTS + SpeechRecognition) | `vocalizationScore` |
 | 10 | `/intake/video-capture` | ONNX behavioral video analysis | `gazeScore`, `motorScore`, `asdRiskScore`, behavior classes |
@@ -263,6 +264,7 @@ Difficulty engine (`app/lib/games/difficultyEngine.ts`) auto-adjusts based on re
 | GET | `/api/auth/callback/google` | Public | OAuth callback handler |
 | GET | `/api/auth/session` | Public | Get current user |
 | POST | `/api/auth/logout` | Public | Delete session |
+| POST | `/api/chat/conversation` | Public | Dynamic voice agent conversation via Bedrock Nova Lite |
 | POST | `/api/report/summary` | Public | Generate summary via Bedrock Nova Lite |
 | POST | `/api/report/clinical` | Public | Generate clinical report via Bedrock Command R+ |
 | POST | `/api/report/pdf` | Public | Generate downloadable PDF |
@@ -325,7 +327,7 @@ npx playwright test    # Run all 30 tests
 - [x] Communication (Stage 4) — SpeechRecognition
 - [x] Visual Engagement (Stage 5) — canvas tap tracking
 - [x] Behavioral Observation (Stage 6) — bubble pop
-- [x] Preparation (Stage 7) — instruction sequencing
+- [x] Preparation (Stage 7) — AI voice conversation (Bedrock + Polly + Web Speech API)
 - [x] Motor Assessment (Stage 8) — target tap
 - [x] Audio Assessment (Stage 9) — audio echo
 
@@ -403,6 +405,7 @@ npx playwright test    # Run all 30 tests
 | R8 | **PDF "=======" separator lines** | Clinical report mock joined sections with `"=".repeat(60)`. Fixed: changed to `---` separator. PDF renderer now detects separator lines (`===`, `---`) and renders graphical dividers instead of text. |
 | R9 | **Video analysis saved only basic metrics** | Stage 10 only saved gazeScore/motorScore at the end. Fixed: extended `addBiomarker` to accept asdRiskScore, body/face behavior classes, probabilities, and emotion distribution. Biomarkers now saved every 5 seconds during the 2-minute assessment. |
 | R10 | **No consent before cloud sync** | Results auto-synced to cloud without user consent. Fixed: consent checkbox added at Stage 10 completion. Summary page (Stage 11) respects the preference — skips sync if user opts out. |
+| R11 | **Step 7 static instructions — no adaptive assessment** | Step 7 used 5 hardcoded instructions with parent-reported "Did it!" buttons. Replaced with a dynamic AI voice agent: Amazon Nova Lite (Bedrock) generates age-appropriate conversation, Amazon Polly speaks to the child, Web Speech API listens for responses. Collects richer biomarkers (response latency, engagement rate, comprehension). Falls back to pre-defined conversation when Bedrock unavailable. |
 
 ---
 
@@ -471,3 +474,28 @@ npx playwright test    # Run all 30 tests
 - Periodic biomarker snapshots during video assessment (every 5s)
 - Sample counter during video analysis ("X samples collected")
 - `localStorage` consent flag (`autisense-sync-consent`) to persist consent across pages
+
+### v1.3.0 — 2026-03-04 (AI Voice Agent for Step 7)
+
+**Major Change:**
+- **Step 7 replaced with dynamic AI voice conversation**: The static 5-instruction "Follow Instructions" page has been replaced with a fully adaptive voice agent that talks directly to the child using Amazon Nova Lite (Bedrock) for conversation generation, Amazon Polly for text-to-speech, and Web Speech API for listening to the child's responses. The agent asks age-appropriate questions across social, cognitive, language, and motor domains, adapting difficulty based on the child's responses.
+
+**New:**
+- `POST /api/chat/conversation` endpoint — sends conversation history to Bedrock Nova Lite, returns structured JSON with the agent's next response, turn metadata (domain, turn type, response relevance), and conversation flow control
+- Pre-defined 7-turn fallback conversation used when Bedrock is unavailable — ensures the feature works offline
+- Per-turn biomarker collection: response latency (TTS end → first speech), response engagement (did child respond?), response relevance (LLM-estimated 0-1 score), developmental domain per turn
+- Richer biomarker mapping: `gazeScore` → avg comprehension/relevance, `motorScore` → motor instruction compliance, `vocalizationScore` → verbal response rate, `responseLatencyMs` → avg across turns
+- Session-aware personalization: agent greets child by name and adjusts language complexity based on age (loaded from IndexedDB session data)
+
+**Architecture:**
+- Polly TTS with browser SpeechSynthesis fallback chain (Polly → browser → text display)
+- Web Speech API with manual parent button fallback (for browsers without speech recognition)
+- Conversation state machine: `pre_start → loading → speaking → listening → processing → complete`
+- Hard cap at 8 turns; "End Early" button available throughout
+- Error recovery: "Try Again" or "Skip Step" on failure
+
+**Files:**
+- Created: `app/api/chat/conversation/route.ts`
+- Rewritten: `app/intake/preparation/page.tsx`
+- Updated: `tests/intake-flow.spec.ts` (Step 7 test assertions)
+- Updated: `DOCS.md` (R11 resolved issue, architecture, API table, changelog)
