@@ -9,16 +9,20 @@ test.describe("Auth Pages", () => {
 });
 
 test.describe("Dashboard", () => {
-  test("Dashboard page renders", async ({ page }) => {
+  test("Dashboard redirects to login when unauthenticated", async ({ page }) => {
     await page.goto("/dashboard");
-    await expect(page.locator("h1")).toContainText("Dashboard");
+    await page.waitForURL(/\/auth\/login/);
+    expect(page.url()).toContain("/auth/login");
+    expect(page.url()).toContain("returnTo=%2Fdashboard");
   });
 });
 
 test.describe("Games Hub", () => {
-  test("Games hub renders with 7 game cards", async ({ page }) => {
+  test("Games hub redirects to login when unauthenticated", async ({ page }) => {
     await page.goto("/games");
-    await expect(page.locator("h1")).toContainText("Therapy Games");
+    await page.waitForURL(/\/auth\/login/);
+    expect(page.url()).toContain("/auth/login");
+    expect(page.url()).toContain("returnTo=%2Fgames");
   });
 
   test("Emotion Match game renders", async ({ page }) => {
@@ -58,9 +62,11 @@ test.describe("Games Hub", () => {
 });
 
 test.describe("Community Feed", () => {
-  test("Feed page renders with post form", async ({ page }) => {
+  test("Feed page redirects to login when unauthenticated", async ({ page }) => {
     await page.goto("/feed");
-    await expect(page.locator("h1")).toContainText("Community");
+    await page.waitForURL(/\/auth\/login/);
+    expect(page.url()).toContain("/auth/login");
+    expect(page.url()).toContain("returnTo=%2Ffeed");
   });
 });
 

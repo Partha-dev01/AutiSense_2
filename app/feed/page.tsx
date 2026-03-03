@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { createPost, listPosts, addReaction, deletePost } from "../lib/db/feed.repository";
 import { getCurrentUserId } from "../lib/identity/identity";
+import { useAuthGuard } from "../hooks/useAuthGuard";
 import type { FeedPost } from "../types/feedPost";
 
 type Category = "all" | FeedPost["category"];
@@ -24,6 +25,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function FeedPage() {
+  const { loading: authLoading, isAuthenticated } = useAuthGuard();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [filter, setFilter] = useState<Category>("all");
@@ -32,6 +34,14 @@ export default function FeedPage() {
   const [posting, setPosting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState("");
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="page" style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
+        <p style={{ color: "var(--text-secondary)" }}>Checking authentication...</p>
+      </div>
+    );
+  }
 
   useEffect(() => {
     const saved =

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useAuthGuard } from "../hooks/useAuthGuard";
 
 const games = [
   {
@@ -56,7 +57,16 @@ const games = [
 ];
 
 export default function GamesHubPage() {
+  const { loading: authLoading, isAuthenticated } = useAuthGuard();
   const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="page" style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
+        <p style={{ color: "var(--text-secondary)" }}>Checking authentication...</p>
+      </div>
+    );
+  }
 
   useEffect(() => {
     const saved =

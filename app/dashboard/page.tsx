@@ -6,6 +6,7 @@ import { listSessions } from "../lib/db/session.repository";
 import { aggregateBiomarkers } from "../lib/db/biomarker.repository";
 import { listProfiles } from "../lib/db/childProfile.repository";
 import { getCurrentUserId } from "../lib/identity/identity";
+import { useAuthGuard } from "../hooks/useAuthGuard";
 import type { Session } from "../types/session";
 import type { ChildProfile } from "../types/childProfile";
 import type { BiomarkerAggregate } from "../types/biomarker";
@@ -25,12 +26,21 @@ interface ScorePoint {
 }
 
 export default function DashboardPage() {
+  const { loading: authLoading, isAuthenticated } = useAuthGuard();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [sessions, setSessions] = useState<Session[]>([]);
   const [profiles, setProfiles] = useState<ChildProfile[]>([]);
   const [avgScore, setAvgScore] = useState<number | null>(null);
   const [chartData, setChartData] = useState<ScorePoint[]>([]);
   const [loading, setLoading] = useState(true);
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="page" style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
+        <p style={{ color: "var(--text-secondary)" }}>Checking authentication...</p>
+      </div>
+    );
+  }
 
   useEffect(() => {
     const saved = (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
