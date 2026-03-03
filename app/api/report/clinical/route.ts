@@ -45,18 +45,10 @@ interface ClinicalResponse {
 
 const BEDROCK_REGION = process.env.BEDROCK_REGION ?? "us-east-1";
 
-function getBedrockClient(): BedrockRuntimeClient | null {
-  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-
-  if (!accessKeyId || !secretAccessKey) {
-    return null;
-  }
-
-  return new BedrockRuntimeClient({
-    region: BEDROCK_REGION,
-    credentials: { accessKeyId, secretAccessKey },
-  });
+// Don't pass explicit credentials — the SDK default credential provider chain
+// handles Lambda IAM roles (with session tokens) and local dev env vars.
+function getBedrockClient(): BedrockRuntimeClient {
+  return new BedrockRuntimeClient({ region: BEDROCK_REGION });
 }
 
 function buildMockReport(
@@ -178,14 +170,6 @@ export async function POST(req: NextRequest) {
 
   const { biomarkers, childAge } = body;
   const client = getBedrockClient();
-
-  // Fallback to mock when AWS credentials are not configured
-  if (!client) {
-    console.warn(
-      "[Report/Clinical] AWS credentials not configured -- returning mock report",
-    );
-    return NextResponse.json(buildMockReport(biomarkers, childAge));
-  }
 
   const ageContext = childAge
     ? `The child is ${Math.floor(childAge / 12)} years and ${childAge % 12} months old.`

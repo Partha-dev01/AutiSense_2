@@ -1,6 +1,26 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Inline server-side env vars at build time.
+  // Amplify SSR (WEB_COMPUTE) injects env vars into the build container
+  // but NOT into the Lambda runtime. This ensures they're baked into the
+  // server bundle. AWS_* vars are excluded — Lambda provides those via IAM role.
+  env: {
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? "",
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ?? "",
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL ?? "",
+    BEDROCK_REGION: process.env.BEDROCK_REGION ?? "",
+    POLLY_REGION: process.env.POLLY_REGION ?? "",
+    S3_MODELS_BUCKET: process.env.S3_MODELS_BUCKET ?? "",
+    DYNAMODB_SESSIONS_TABLE: process.env.DYNAMODB_SESSIONS_TABLE ?? "",
+    DYNAMODB_BIOMARKERS_TABLE: process.env.DYNAMODB_BIOMARKERS_TABLE ?? "",
+    DYNAMODB_USERS_TABLE: process.env.DYNAMODB_USERS_TABLE ?? "",
+    DYNAMODB_AUTH_SESSIONS_TABLE: process.env.DYNAMODB_AUTH_SESSIONS_TABLE ?? "",
+    DYNAMODB_CHILD_PROFILES_TABLE: process.env.DYNAMODB_CHILD_PROFILES_TABLE ?? "",
+    DYNAMODB_SESSION_SUMMARIES_TABLE: process.env.DYNAMODB_SESSION_SUMMARIES_TABLE ?? "",
+    DYNAMODB_FEED_POSTS_TABLE: process.env.DYNAMODB_FEED_POSTS_TABLE ?? "",
+  },
+
   // Required for SharedArrayBuffer (ONNX WASM multi-threading)
   async headers() {
     return [

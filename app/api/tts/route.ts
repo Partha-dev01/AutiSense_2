@@ -24,20 +24,13 @@ interface TtsRequestBody {
   voiceId?: string;
 }
 
-const AWS_REGION = process.env.AWS_REGION ?? "ap-south-1";
+// Use POLLY_REGION if set, otherwise fall back to AWS_REGION (auto-set on Lambda)
+const POLLY_REGION = process.env.POLLY_REGION ?? process.env.AWS_REGION ?? "ap-south-1";
 
-function getPollyClient(): PollyClient | null {
-  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-
-  if (!accessKeyId || !secretAccessKey) {
-    return null;
-  }
-
-  return new PollyClient({
-    region: AWS_REGION,
-    credentials: { accessKeyId, secretAccessKey },
-  });
+// Don't pass explicit credentials — the SDK default credential provider chain
+// handles Lambda IAM roles (with session tokens) and local dev env vars.
+function getPollyClient(): PollyClient {
+  return new PollyClient({ region: POLLY_REGION });
 }
 
 export async function POST(req: NextRequest) {
@@ -60,16 +53,6 @@ export async function POST(req: NextRequest) {
   }
 
   const client = getPollyClient();
-
-  if (!client) {
-    return NextResponse.json(
-      {
-        error:
-          "Text-to-Speech service unavailable. AWS credentials are not configured.",
-      },
-      { status: 503 },
-    );
-  }
 
   // Polly has a 3000-character limit for SynthesizeSpeech.
   // Truncate gracefully at the last sentence boundary.

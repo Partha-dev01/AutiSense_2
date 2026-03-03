@@ -26,18 +26,10 @@ interface SummaryRequestBody {
 
 const BEDROCK_REGION = process.env.BEDROCK_REGION ?? "us-east-1";
 
-function getBedrockClient(): BedrockRuntimeClient | null {
-  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-
-  if (!accessKeyId || !secretAccessKey) {
-    return null;
-  }
-
-  return new BedrockRuntimeClient({
-    region: BEDROCK_REGION,
-    credentials: { accessKeyId, secretAccessKey },
-  });
+// Don't pass explicit credentials — the SDK default credential provider chain
+// handles Lambda IAM roles (with session tokens) and local dev env vars.
+function getBedrockClient(): BedrockRuntimeClient {
+  return new BedrockRuntimeClient({ region: BEDROCK_REGION });
 }
 
 function buildMockSummary(biomarkers: BiomarkerAggregate): string {
@@ -71,14 +63,6 @@ export async function POST(req: NextRequest) {
 
   const { biomarkers } = body;
   const client = getBedrockClient();
-
-  // Fallback to mock when AWS credentials are not configured
-  if (!client) {
-    console.warn(
-      "[Report/Summary] AWS credentials not configured -- returning mock summary",
-    );
-    return NextResponse.json({ summary: buildMockSummary(biomarkers) });
-  }
 
   const prompt = `Generate a parent-friendly screening summary for a child based on the following biomarker data. Map to DSM-5 criteria. Keep it to 3-4 paragraphs.
 

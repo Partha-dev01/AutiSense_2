@@ -8,10 +8,8 @@
  *     biomarkers: BiomarkerAggregate | null
  *   }
  *
- * Environment variables required:
- *   AWS_REGION
- *   AWS_ACCESS_KEY_ID
- *   AWS_SECRET_ACCESS_KEY
+ * Environment variables:
+ *   AWS_REGION                (auto-set on Lambda)
  *   DYNAMODB_SESSIONS_TABLE
  *   DYNAMODB_BIOMARKERS_TABLE
  */
@@ -22,12 +20,10 @@ import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import type { SessionSyncPayload } from "../../types/session";
 import type { BiomarkerAggregate } from "../../types/biomarker";
 
+// Don't pass explicit credentials — let the SDK use its default credential
+// provider chain (Lambda IAM role on Amplify, env vars or ~/.aws on local dev).
 const dynamoClient = new DynamoDBClient({
   region: process.env.AWS_REGION ?? "ap-south-1",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
 });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
