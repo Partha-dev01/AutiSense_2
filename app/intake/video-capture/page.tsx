@@ -149,6 +149,10 @@ export default function VideoCapturePage() {
     setTimeLeft(ASSESSMENT_SECONDS);
     setSamplesCollected(0);
 
+    // Clear any existing intervals to prevent double-speed
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (biomarkerTimerRef.current) clearInterval(biomarkerTimerRef.current);
+
     // Countdown timer
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {

@@ -240,16 +240,17 @@ export function useActionCamera(): UseActionCameraReturn {
     detectingRef.current = false;
   }, []);
 
-  // Defensive: re-attach stream when video element appears in DOM
-  // (no deps — runs every render to catch ref changes)
+  // Defensive: re-attach stream when video element appears in DOM.
+  // Only runs when isActive changes (camera just started).
   useEffect(() => {
+    if (!isActive) return;
     const video = videoRef.current;
     const stream = streamRef.current;
     if (video && stream && !video.srcObject) {
       video.srcObject = stream;
       video.play().catch(() => {});
     }
-  });
+  }, [isActive]);
 
   // Cleanup on unmount
   useEffect(() => {
