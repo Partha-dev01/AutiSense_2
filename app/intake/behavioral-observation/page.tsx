@@ -4,12 +4,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { addBiomarker } from "../../lib/db/biomarker.repository";
 import { getCurrentSessionId } from "../../lib/session/currentSession";
+import SkipStageDialog from "../../components/SkipStageDialog";
 
 const STEPS = [
-  "Welcome", "Profile", "Device", "Communicate", "Visual", "Behavior",
-  "Prepare", "Motor", "Audio", "Video", "Summary", "Report",
+  "Welcome", "Profile", "Device", "Communicate", "Behavior",
+  "Prepare", "Motor", "Video", "Summary", "Report",
 ];
-const STEP_IDX = 5;
+const STEP_IDX = 4;
 
 interface Bubble {
   id: number;
@@ -32,7 +33,7 @@ export default function BehavioralObservationPage() {
   const [taskComplete, setTaskComplete] = useState(false);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [score, setScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [timeLeft, setTimeLeft] = useState(30);
   const [popTimes, setPopTimes] = useState<number[]>([]);
   const nextIdRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -101,6 +102,20 @@ export default function BehavioralObservationPage() {
     setBubbles((prev) => prev.filter((b) => b.id !== id));
   };
 
+  const handleSkipStage = useCallback(async () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (spawnRef.current) clearInterval(spawnRef.current);
+    const sid = getCurrentSessionId();
+    if (sid) {
+      await addBiomarker(sid, "behavioral_observation", {
+        gazeScore: 0.5,
+        motorScore: 0.5,
+        vocalizationScore: 0.5,
+      }).catch(() => {});
+    }
+    router.push("/intake/preparation");
+  }, [router]);
+
   const avgPopTime = popTimes.length > 1
     ? Math.round(popTimes.slice(1).reduce((a, b) => a + b, 0) / (popTimes.length - 1))
     : 0;
@@ -114,7 +129,7 @@ export default function BehavioralObservationPage() {
             {theme === "light" ? "🌙" : "☀️"}
           </button>
           <span style={{ fontSize: "0.88rem", color: "var(--text-muted)", fontWeight: 600 }}>
-            Step {STEP_IDX + 1} of 12
+            Step {STEP_IDX + 1} of 10
           </span>
         </div>
       </nav>
@@ -132,14 +147,15 @@ export default function BehavioralObservationPage() {
         </div>
       </div>
 
-      <main className="main">
+      <main className="main" style={{ position: "relative" }}>
+        <SkipStageDialog onConfirm={handleSkipStage} />
         <div className="fade fade-1" style={{ textAlign: "center", marginBottom: 28 }}>
           <div className="breathe-orb" style={{ margin: "0 auto" }}>
             <div className="breathe-inner">🫧</div>
           </div>
         </div>
 
-        <div className="chip fade fade-1">Step 6 — Free Play</div>
+        <div className="chip fade fade-1">Step 5 — Free Play</div>
         <h1 className="page-title fade fade-2">
           Pop the <em>bubbles!</em>
         </h1>
@@ -212,7 +228,7 @@ export default function BehavioralObservationPage() {
         )}
 
         <div className="fade fade-4" style={{ display: "flex", gap: 12, marginTop: 28 }}>
-          <Link href="/intake/visual-engagement" className="btn btn-outline" style={{ minWidth: 100 }}>
+          <Link href="/intake/communication" className="btn btn-outline" style={{ minWidth: 100 }}>
             ← Back
           </Link>
           <button className="btn btn-primary btn-full" disabled={!taskComplete}

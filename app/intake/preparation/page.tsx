@@ -6,12 +6,13 @@ import { addBiomarker } from "../../lib/db/biomarker.repository";
 import { getCurrentSessionId } from "../../lib/session/currentSession";
 import { useActionCamera } from "../../hooks/useActionCamera";
 import { ACTION_META, type ActionId } from "../../lib/actions/actionDetector";
+import SkipStageDialog from "../../components/SkipStageDialog";
 
 const STEPS = [
-  "Welcome", "Profile", "Device", "Communicate", "Visual", "Behavior",
-  "Prepare", "Motor", "Audio", "Video", "Summary", "Report",
+  "Welcome", "Profile", "Device", "Communicate", "Behavior",
+  "Prepare", "Motor", "Video", "Summary", "Report",
 ];
-const STEP_IDX = 6;
+const STEP_IDX = 5;
 
 const ACTIONS: ActionId[] = ["wave", "touch_nose", "clap", "raise_arms", "touch_head", "touch_ears"];
 const ACTION_TIMEOUT_MS = 15_000;
@@ -190,6 +191,21 @@ export default function PreparationPage() {
     };
   }, [clearTimers]);
 
+  const handleSkipStage = useCallback(async () => {
+    clearTimers();
+    stopDetecting();
+    stopCamera();
+    const sid = getCurrentSessionId();
+    if (sid) {
+      await addBiomarker(sid, "preparation_interactive", {
+        gazeScore: 0.5,
+        motorScore: 0.5,
+        vocalizationScore: 0.5,
+      }).catch(() => {});
+    }
+    router.push("/intake/motor");
+  }, [router, clearTimers, stopDetecting, stopCamera]);
+
   const currentAction = ACTIONS[currentIdx];
   const meta = ACTION_META[currentAction];
   const detectedCount = Array.from(results.values()).filter(Boolean).length;
@@ -205,7 +221,7 @@ export default function PreparationPage() {
             {theme === "light" ? "🌙" : "☀️"}
           </button>
           <span style={{ fontSize: "0.88rem", color: "var(--text-muted)", fontWeight: 600 }}>
-            Step {STEP_IDX + 1} of 12
+            Step {STEP_IDX + 1} of 10
           </span>
         </div>
       </nav>
@@ -223,14 +239,15 @@ export default function PreparationPage() {
         </div>
       </div>
 
-      <main className="main">
+      <main className="main" style={{ position: "relative" }}>
+        <SkipStageDialog onConfirm={handleSkipStage} />
         <div className="fade fade-1" style={{ textAlign: "center", marginBottom: 28 }}>
           <div className="breathe-orb" style={{ margin: "0 auto" }}>
             <div className="breathe-inner">💪</div>
           </div>
         </div>
 
-        <div className="chip fade fade-1">Step 7 — Action Challenge</div>
+        <div className="chip fade fade-1">Step 6 — Action Challenge</div>
         <h1 className="page-title fade fade-2">
           Show us your <em>moves!</em>
         </h1>
@@ -287,34 +304,14 @@ export default function PreparationPage() {
               {meta.label}
             </h2>
 
-            {/* Countdown */}
-            {actionPhase === "countdown" && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{
-                  width: 80, height: 80, borderRadius: "50%",
-                  background: "var(--sky-100)", border: "3px solid var(--sky-300)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  margin: "0 auto 12px",
-                  fontSize: "2rem", fontWeight: 700, color: "var(--sky-400)",
-                  fontFamily: "'Fredoka',sans-serif",
-                }}>
-                  {countdown > 0 ? countdown : "Go!"}
-                </div>
-                <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", fontWeight: 600 }}>
-                  Get ready...
-                </p>
-              </div>
-            )}
-
-            {/* Detecting — camera + live feedback */}
-            {(actionPhase === "detecting" || actionPhase === "detected") && (
+            {/* Camera feed — visible during countdown, detecting, and detected */}
+            {(actionPhase === "countdown" || actionPhase === "detecting" || actionPhase === "detected") && (
               <>
-                {/* Camera feed */}
                 {cameraActive && !cameraError ? (
                   <div style={{
                     position: "relative", width: 320, height: 240,
                     margin: "0 auto 12px", borderRadius: 16, overflow: "hidden",
-                    border: `3px solid ${actionPhase === "detected" ? "var(--sage-400)" : getConfidenceColor(actionResult?.confidence || 0)}`,
+                    border: `3px solid ${actionPhase === "detected" ? "var(--sage-400)" : actionPhase === "countdown" ? "var(--sky-300)" : getConfidenceColor(actionResult?.confidence || 0)}`,
                     transition: "border-color 0.2s",
                   }}>
                     <video
@@ -330,6 +327,29 @@ export default function PreparationPage() {
                         width: 320, height: 240, transform: "scaleX(-1)", pointerEvents: "none",
                       }}
                     />
+
+                    {/* Countdown overlay on camera */}
+                    {actionPhase === "countdown" && (
+                      <div style={{
+                        position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
+                        background: "rgba(0,0,0,0.35)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        flexDirection: "column", gap: 8,
+                      }}>
+                        <div style={{
+                          width: 80, height: 80, borderRadius: "50%",
+                          background: "rgba(255,255,255,0.95)", border: "3px solid var(--sky-300)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: "2rem", fontWeight: 700, color: "var(--sky-400)",
+                          fontFamily: "'Fredoka',sans-serif",
+                        }}>
+                          {countdown > 0 ? countdown : "Go!"}
+                        </div>
+                        <p style={{ fontSize: "0.9rem", color: "white", fontWeight: 600 }}>
+                          Get ready...
+                        </p>
+                      </div>
+                    )}
 
                     {/* Success overlay */}
                     {actionPhase === "detected" && (

@@ -3,6 +3,22 @@
  * for getUserMedia across desktop and mobile browsers.
  */
 
+/** Wrap a promise with a timeout. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new DOMException(
+        `Camera request timed out after ${ms / 1000}s.`,
+        "TimeoutError",
+      ));
+    }, ms);
+    promise.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); },
+    );
+  });
+}
+
 /** Progressive constraint tiers for getUserMedia. */
 const CONSTRAINT_TIERS: MediaStreamConstraints[] = [
   // Tier 1: ideal resolution + front camera
@@ -36,7 +52,10 @@ export async function getUserMediaWithFallback(): Promise<MediaStream> {
 
   for (const constraints of CONSTRAINT_TIERS) {
     try {
-      return await navigator.mediaDevices.getUserMedia(constraints);
+      return await withTimeout(
+        navigator.mediaDevices.getUserMedia(constraints),
+        10_000,
+      );
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
       // User denied — no point trying other tiers
@@ -64,6 +83,8 @@ export function getCameraErrorMessage(err: unknown): string {
         return "Camera doesn't support the required settings. Please try a different browser.";
       case "SecurityError":
         return "Camera access requires HTTPS. Please access this site via a secure (https://) connection.";
+      case "TimeoutError":
+        return "Camera took too long to respond. Please close other apps using the camera and try again.";
       default:
         return `Camera error: ${err.message}`;
     }

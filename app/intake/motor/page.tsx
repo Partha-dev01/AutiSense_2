@@ -4,12 +4,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { addBiomarker } from "../../lib/db/biomarker.repository";
 import { getCurrentSessionId } from "../../lib/session/currentSession";
+import SkipStageDialog from "../../components/SkipStageDialog";
 
 const STEPS = [
-  "Welcome", "Profile", "Device", "Communicate", "Visual", "Behavior",
-  "Prepare", "Motor", "Audio", "Video", "Summary", "Report",
+  "Welcome", "Profile", "Device", "Communicate", "Behavior",
+  "Prepare", "Motor", "Video", "Summary", "Report",
 ];
-const STEP_IDX = 7;
+const STEP_IDX = 6;
 
 interface Target {
   id: number;
@@ -28,7 +29,7 @@ export default function MotorAssessmentPage() {
   const [hits, setHits] = useState(0);
   const [misses, setMisses] = useState(0);
   const [reactionTimes, setReactionTimes] = useState<number[]>([]);
-  const [timeLeft, setTimeLeft] = useState(45);
+  const [timeLeft, setTimeLeft] = useState(30);
   const [round, setRound] = useState(0);
   const nextIdRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -92,6 +93,19 @@ export default function MotorAssessmentPage() {
     setMisses((m) => m + 1);
   };
 
+  const handleSkipStage = useCallback(async () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    const sid = getCurrentSessionId();
+    if (sid) {
+      await addBiomarker(sid, "motor_assessment", {
+        gazeScore: 0.5,
+        motorScore: 0.5,
+        vocalizationScore: 0.5,
+      }).catch(() => {});
+    }
+    router.push("/intake/video-capture");
+  }, [router]);
+
   const avgReaction = reactionTimes.length > 0
     ? Math.round(reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length)
     : 0;
@@ -106,7 +120,7 @@ export default function MotorAssessmentPage() {
             {theme === "light" ? "🌙" : "☀️"}
           </button>
           <span style={{ fontSize: "0.88rem", color: "var(--text-muted)", fontWeight: 600 }}>
-            Step {STEP_IDX + 1} of 12
+            Step {STEP_IDX + 1} of 10
           </span>
         </div>
       </nav>
@@ -124,14 +138,15 @@ export default function MotorAssessmentPage() {
         </div>
       </div>
 
-      <main className="main">
+      <main className="main" style={{ position: "relative" }}>
+        <SkipStageDialog onConfirm={handleSkipStage} />
         <div className="fade fade-1" style={{ textAlign: "center", marginBottom: 28 }}>
           <div className="breathe-orb" style={{ margin: "0 auto" }}>
             <div className="breathe-inner">🎯</div>
           </div>
         </div>
 
-        <div className="chip fade fade-1">Step 8 — Motor Skills</div>
+        <div className="chip fade fade-1">Step 7 — Motor Skills</div>
         <h1 className="page-title fade fade-2">
           Tap the <em>targets!</em>
         </h1>
@@ -227,7 +242,7 @@ export default function MotorAssessmentPage() {
                   responseLatencyMs: avgReaction || null,
                 }).catch(() => {});
               }
-              router.push("/intake/audio");
+              router.push("/intake/video-capture");
             }}>
             Continue →
           </button>

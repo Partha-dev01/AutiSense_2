@@ -6,8 +6,8 @@ import { createSession } from "../../lib/db/session.repository";
 import { setCurrentSessionId } from "../../lib/session/currentSession";
 
 const STEPS = [
-  "Welcome", "Profile", "Device", "Communicate", "Visual", "Behavior",
-  "Prepare", "Motor", "Audio", "Video", "Summary", "Report",
+  "Welcome", "Profile", "Device", "Communicate", "Behavior",
+  "Prepare", "Motor", "Video", "Summary", "Report",
 ];
 
 const LANGUAGES = [
@@ -131,7 +131,7 @@ export default function ProfilePage() {
               fontWeight: 600,
             }}
           >
-            Step 2 of 12
+            Step 2 of 10
           </span>
         </div>
       </nav>

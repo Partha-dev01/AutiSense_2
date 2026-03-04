@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { addBiomarker } from "../../lib/db/biomarker.repository";
 import { getCurrentSessionId } from "../../lib/session/currentSession";
 import { getSession } from "../../lib/db/session.repository";
+import SkipStageDialog from "../../components/SkipStageDialog";
 
 const STEPS = [
-  "Welcome", "Profile", "Device", "Communicate", "Visual", "Behavior",
-  "Prepare", "Motor", "Audio", "Video", "Summary", "Report",
+  "Welcome", "Profile", "Device", "Communicate", "Behavior",
+  "Prepare", "Motor", "Video", "Summary", "Report",
 ];
 const STEP_IDX = 3;
 const MIN_MATCHED = 2; // Criteria gate: at least 2 words matched
@@ -204,6 +205,19 @@ export default function CommunicationPage() {
     setStarted(false);
   }, []);
 
+  const handleSkipStage = useCallback(async () => {
+    stopRecognition();
+    const sid = getCurrentSessionId();
+    if (sid) {
+      await addBiomarker(sid, "communication_responsiveness", {
+        gazeScore: 0.5,
+        motorScore: 0.5,
+        vocalizationScore: 0.5,
+      }).catch(() => {});
+    }
+    router.push("/intake/behavioral-observation");
+  }, [router, stopRecognition]);
+
   const word = words[currentIdx];
   const matchedCount = results.filter((r) => r === "matched").length;
   const meetsCriteria = matchedCount >= MIN_MATCHED;
@@ -217,7 +231,7 @@ export default function CommunicationPage() {
             {theme === "light" ? "🌙" : "☀️"}
           </button>
           <span style={{ fontSize: "0.88rem", color: "var(--text-muted)", fontWeight: 600 }}>
-            Step {STEP_IDX + 1} of 12
+            Step {STEP_IDX + 1} of 10
           </span>
         </div>
       </nav>
@@ -235,7 +249,8 @@ export default function CommunicationPage() {
         </div>
       </div>
 
-      <main className="main">
+      <main className="main" style={{ position: "relative" }}>
+        <SkipStageDialog onConfirm={handleSkipStage} />
         <div className="fade fade-1" style={{ textAlign: "center", marginBottom: 28 }}>
           <div className="breathe-orb" style={{ margin: "0 auto" }}>
             <div className="breathe-inner">🔊</div>
@@ -330,11 +345,6 @@ export default function CommunicationPage() {
                     Listening...
                   </span>
                 </div>
-                {transcript && (
-                  <p style={{ marginTop: 12, fontSize: "1.1rem", fontWeight: 600, color: "var(--sage-500)" }}>
-                    &ldquo;{transcript}&rdquo;
-                  </p>
-                )}
               </div>
             )}
 
@@ -363,6 +373,38 @@ export default function CommunicationPage() {
                     Next Word →
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Live transcript — visible during listening, matched, missed */}
+            {(wordState === "listening" || wordState === "matched" || wordState === "missed") && transcript && (
+              <div style={{
+                marginTop: 16,
+                padding: "12px 20px",
+                borderRadius: 12,
+                background: "var(--sage-50)",
+                border: "2px solid var(--sage-300)",
+                animation: wordState === "listening" ? "breathe-core 1.5s ease-in-out infinite" : "none",
+              }}>
+                <div style={{
+                  fontSize: "0.75rem",
+                  color: "var(--text-muted)",
+                  fontWeight: 700,
+                  marginBottom: 4,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}>
+                  Heard:
+                </div>
+                <p style={{
+                  fontSize: "1.4rem",
+                  fontWeight: 700,
+                  color: wordState === "matched" ? "var(--sage-600)" : "var(--text-primary)",
+                  fontFamily: "'Fredoka',sans-serif",
+                  margin: 0,
+                }}>
+                  &ldquo;{transcript}&rdquo;
+                </p>
               </div>
             )}
 
@@ -434,7 +476,7 @@ export default function CommunicationPage() {
                   vocalizationScore: Math.min(1, matchedCount / words.length),
                 }).catch(() => {});
               }
-              router.push("/intake/visual-engagement");
+              router.push("/intake/behavioral-observation");
             }}>
             Continue →
           </button>

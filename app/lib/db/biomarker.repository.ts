@@ -1,10 +1,27 @@
 import { db } from "./schema";
 import { getCurrentUserId } from "../identity/identity";
+import { normalizeScore, getAgeGroup, AGE_THRESHOLDS } from "../scoring/ageNormalization";
 import type {
   Biomarker,
   BiomarkerAggregate,
   TaskId,
 } from "../../types/biomarker";
+
+/** Which domains each task actually measures. Used to exclude placeholder 0.5 values. */
+const TASK_DOMAINS: Record<string, { gaze: boolean; motor: boolean; vocal: boolean }> = {
+  communication_responsiveness: { gaze: false, motor: false, vocal: true },
+  behavioral_observation:       { gaze: true,  motor: false, vocal: false },
+  preparation_interactive:      { gaze: false, motor: true,  vocal: false },
+  motor_assessment:             { gaze: false, motor: true,  vocal: false },
+  behavioral_video:             { gaze: true,  motor: true,  vocal: false },
+  social_visual_engagement:     { gaze: true,  motor: false, vocal: false },
+  audio_assessment:             { gaze: false, motor: false, vocal: true },
+  gaze_tracking:                { gaze: true,  motor: false, vocal: false },
+  motor_tap:                    { gaze: false, motor: true,  vocal: false },
+  sound_match:                  { gaze: false, motor: false, vocal: true },
+  social_attention:             { gaze: true,  motor: false, vocal: false },
+  response_latency:             { gaze: false, motor: true,  vocal: false },
+};
 
 //Create
 export async function addBiomarker(
@@ -65,6 +82,7 @@ export async function getBiomarkersByTask(
 
 export async function aggregateBiomarkers(
   sessionId: string,
+  ageMonths?: number,
 ): Promise<BiomarkerAggregate | null> {
   const rows = await getBiomarkersBySession(sessionId);
   if (rows.length === 0) return null;
@@ -75,15 +93,30 @@ export async function aggregateBiomarkers(
     .map((r) => r.responseLatencyMs)
     .filter((v): v is number => v !== null);
 
-  const avgGaze = avg(rows.map((r) => r.gazeScore));
-  const avgMotor = avg(rows.map((r) => r.motorScore));
-  const avgVocal = avg(rows.map((r) => r.vocalizationScore));
+  // Domain-aware averaging: only use scores from tasks that actually measure each domain
+  const gazeRows = rows.filter((r) => TASK_DOMAINS[r.taskId]?.gaze);
+  const motorRows = rows.filter((r) => TASK_DOMAINS[r.taskId]?.motor);
+  const vocalRows = rows.filter((r) => TASK_DOMAINS[r.taskId]?.vocal);
+
+  const rawAvgGaze = gazeRows.length > 0 ? avg(gazeRows.map((r) => r.gazeScore)) : 0.75;
+  const rawAvgMotor = motorRows.length > 0 ? avg(motorRows.map((r) => r.motorScore)) : 0.75;
+  const rawAvgVocal = vocalRows.length > 0 ? avg(vocalRows.map((r) => r.vocalizationScore)) : 0.75;
   const avgLatency = latencies.length > 0 ? avg(latencies) : null;
+
+  // Apply age normalization if ageMonths provided
+  const avgGaze = ageMonths != null ? normalizeScore(rawAvgGaze, "gaze", ageMonths) : rawAvgGaze;
+  const avgMotor = ageMonths != null ? normalizeScore(rawAvgMotor, "motor", ageMonths) : rawAvgMotor;
+  const avgVocal = ageMonths != null ? normalizeScore(rawAvgVocal, "vocal", ageMonths) : rawAvgVocal;
 
   // Composite score: weighted average (gaze 40%, motor 30%, vocal 30%)
   const overallScore = Math.round(
     (avgGaze * 0.4 + avgMotor * 0.3 + avgVocal * 0.3) * 100,
   );
+
+  // Age-based DSM-5 thresholds
+  const thresholds = ageMonths != null
+    ? AGE_THRESHOLDS[getAgeGroup(ageMonths)]
+    : { gazeFlag: 0.4, vocalFlag: 0.35, motorFlag: 0.35, latencyFlag: 3000 };
 
   // Extended fields from Stage 10 detector data
   const videoRows = rows.filter((r) => r.taskId === "behavioral_video");
@@ -96,7 +129,6 @@ export async function aggregateBiomarkers(
     const riskScores = videoRows.filter((r) => r.asdRiskScore != null).map((r) => r.asdRiskScore!);
     if (riskScores.length > 0) avgAsdRisk = round(avg(riskScores));
 
-    // Count body behavior classes
     const bodyCounts: Record<string, number> = {};
     for (const r of videoRows) {
       if (r.bodyBehaviorClass) {
@@ -108,7 +140,6 @@ export async function aggregateBiomarkers(
       behaviorClassDistribution = bodyCounts;
     }
 
-    // Count face behavior classes
     const faceCounts: Record<string, number> = {};
     for (const r of videoRows) {
       if (r.faceBehaviorClass) {
@@ -129,11 +160,9 @@ export async function aggregateBiomarkers(
     sampleCount: rows.length,
     overallScore,
     flags: {
-      // DSM-5 domain: Social Communication & Interaction
-      socialCommunication: avgGaze < 0.4 || avgVocal < 0.35,
-      // DSM-5 domain: Restricted & Repetitive Behaviours
+      socialCommunication: avgGaze < thresholds.gazeFlag || avgVocal < thresholds.vocalFlag,
       restrictedBehavior:
-        avgMotor < 0.35 || (avgLatency !== null && avgLatency > 3000),
+        avgMotor < thresholds.motorFlag || (avgLatency !== null && avgLatency > thresholds.latencyFlag),
     },
     avgAsdRisk,
     dominantBodyBehavior,

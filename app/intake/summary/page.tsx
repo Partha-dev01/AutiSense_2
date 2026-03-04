@@ -10,8 +10,8 @@ import type { BiomarkerAggregate } from "../../types/biomarker";
 import type { Session } from "../../types/session";
 
 const STEPS = [
-  "Welcome", "Profile", "Device", "Communicate", "Visual", "Behavior",
-  "Prepare", "Motor", "Audio", "Video", "Summary", "Report",
+  "Welcome", "Profile", "Device", "Communicate", "Behavior",
+  "Prepare", "Motor", "Video", "Summary", "Report",
 ];
 
 function scoreLabel(score: number): { label: string; color: string } {
@@ -68,10 +68,8 @@ function SummaryPage() {
 
     async function load() {
       try {
-        const [sess, agg] = await Promise.all([
-          getSession(sessionId!),
-          aggregateBiomarkers(sessionId!),
-        ]);
+        const sess = await getSession(sessionId!);
+        const agg = await aggregateBiomarkers(sessionId!, sess?.ageMonths);
 
         // Mark session as completed if not already
         if (sess && sess.status === "in_progress") {
@@ -183,7 +181,7 @@ function SummaryPage() {
               fontWeight: 600,
             }}
           >
-            Step 11 of 12
+            Step 11 of 10
           </span>
         </div>
       </nav>

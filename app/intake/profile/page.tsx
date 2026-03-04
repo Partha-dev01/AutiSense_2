@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const STEPS = [
-  "Welcome", "Profile", "Device", "Communicate", "Visual", "Behavior",
-  "Prepare", "Motor", "Audio", "Video", "Summary", "Report",
+  "Welcome", "Profile", "Device", "Communicate", "Behavior",
+  "Prepare", "Motor", "Video", "Summary", "Report",
 ];
 
 export default function IntakeStartPage() {
@@ -72,7 +72,7 @@ export default function IntakeStartPage() {
               fontWeight: 600,
             }}
           >
-            Step 1 of 12
+            Step 1 of 10
           </span>
         </div>
       </nav>

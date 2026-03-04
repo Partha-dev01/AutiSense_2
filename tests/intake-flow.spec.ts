@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("Intake Flow — Full 12-Step Progression", () => {
+test.describe("Intake Flow — Full 10-Step Progression", () => {
   test("Landing page → Profile (consent)", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator("h1")).toContainText("Computer-assisted autism screening");
@@ -40,61 +40,45 @@ test.describe("Intake Flow — Full 12-Step Progression", () => {
     await page.goto("/intake/communication");
     await expect(page.locator(".chip")).toContainText("Step 4");
     await expect(page.locator("h1")).toContainText("echo");
-    // Loading state or start button (words fetched dynamically)
     await expect(page.locator("text=Generating").or(page.locator("button:has-text('Start Word Echo')"))).toBeVisible();
   });
 
-  test("Step 5 Visual Engagement renders", async ({ page }) => {
-    await page.goto("/intake/visual-engagement");
-    await expect(page.locator(".chip")).toContainText("Step 5");
-    await expect(page.locator("h1")).toContainText("their eye");
-    await expect(page.locator("button:has-text('Start Visual Task')")).toBeVisible();
-  });
-
-  test("Step 6 Behavioral Observation renders", async ({ page }) => {
+  test("Step 5 Behavioral Observation renders", async ({ page }) => {
     await page.goto("/intake/behavioral-observation");
-    await expect(page.locator(".chip")).toContainText("Step 6");
+    await expect(page.locator(".chip")).toContainText("Step 5");
     await expect(page.locator("h1")).toContainText("bubbles");
     await expect(page.locator("button:has-text('Start Bubble Pop')")).toBeVisible();
   });
 
-  test("Step 7 Preparation renders", async ({ page }) => {
+  test("Step 6 Preparation renders", async ({ page }) => {
     await page.goto("/intake/preparation");
-    await expect(page.locator(".chip")).toContainText("Step 7");
+    await expect(page.locator(".chip")).toContainText("Step 6");
     await expect(page.locator("h1")).toContainText("moves");
     await expect(page.locator("button:has-text('Start Action Challenge')")).toBeVisible();
   });
 
-  test("Step 8 Motor Assessment renders", async ({ page }) => {
+  test("Step 7 Motor Assessment renders", async ({ page }) => {
     await page.goto("/intake/motor");
-    await expect(page.locator(".chip")).toContainText("Step 8");
+    await expect(page.locator(".chip")).toContainText("Step 7");
     await expect(page.locator("h1")).toContainText("targets");
     await expect(page.locator("button:has-text('Start Motor Test')")).toBeVisible();
   });
 
-  test("Step 9 Audio Assessment renders", async ({ page }) => {
-    await page.goto("/intake/audio");
-    await expect(page.locator(".chip")).toContainText("Step 9");
-    await expect(page.locator("h1")).toContainText("back");
-    // Loading state or start button (content fetched dynamically)
-    await expect(page.locator("text=Generating").or(page.locator("button:has-text('Start Speech Test')"))).toBeVisible();
-  });
-
-  test("Step 10 Video Capture renders", async ({ page }) => {
+  test("Step 8 Video Capture renders", async ({ page }) => {
     await page.goto("/intake/video-capture");
-    await expect(page.locator(".chip")).toContainText("Step 10");
+    await expect(page.locator(".chip")).toContainText("Step 8");
     await expect(page.locator("h1")).toContainText("screening");
     await expect(page.locator("button:has-text('Start Video Analysis')")).toBeVisible();
   });
 
-  test("Step 11 Summary renders", async ({ page }) => {
+  test("Step 9 Summary renders", async ({ page }) => {
     await page.goto("/intake/summary");
     await expect(page).toHaveURL("/intake/summary");
   });
 
-  test("Step 12 Report renders", async ({ page }) => {
+  test("Step 10 Report renders", async ({ page }) => {
     await page.goto("/intake/report");
-    await expect(page.locator(".chip")).toContainText("Step 12");
+    await expect(page.locator(".chip")).toContainText("Step 10");
     await expect(page.locator("h1")).toContainText("clinical report");
     await expect(page.locator("text=Quick Summary").first()).toBeVisible();
   });
@@ -113,6 +97,28 @@ test.describe("Intake Flow — Full 12-Step Progression", () => {
     await expect(page).toHaveURL("/intake/device-check");
   });
 
+  test("Skip Stage button visible on assessment pages", async ({ page }) => {
+    // Skip button should appear on all 5 assessment stages
+    for (const route of [
+      "/intake/communication",
+      "/intake/behavioral-observation",
+      "/intake/preparation",
+      "/intake/motor",
+      "/intake/video-capture",
+    ]) {
+      await page.goto(route);
+      await expect(page.locator("button:has-text('Skip Stage')")).toBeVisible();
+    }
+  });
+
+  test("Skip Stage dialog opens and can be cancelled", async ({ page }) => {
+    await page.goto("/intake/communication");
+    await page.click("button:has-text('Skip Stage')");
+    await expect(page.locator("text=Skip this stage?")).toBeVisible();
+    await page.click("button:has-text('Cancel')");
+    await expect(page.locator("text=Skip this stage?")).not.toBeVisible();
+  });
+
   test("Full flow: Landing → Consent → Profile → Device Check", async ({ page }) => {
     await page.goto("/");
     await page.click("text=Begin Free Autism Screening →");
@@ -129,6 +135,6 @@ test.describe("Intake Flow — Full 12-Step Progression", () => {
     await page.click("button:has-text('Continue →')");
     await expect(page).toHaveURL("/intake/device-check");
 
-    await expect(page.locator(".step-dot")).toHaveCount(12);
+    await expect(page.locator(".step-dot")).toHaveCount(10);
   });
 });

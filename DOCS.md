@@ -11,7 +11,7 @@
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
 - [Feature Map](#feature-map)
-- [Intake Flow (12 Steps)](#intake-flow-12-steps)
+- [Intake Flow (10 Steps)](#intake-flow-10-steps)
 - [AI / ML Pipeline](#ai--ml-pipeline)
 - [AWS Services](#aws-services)
 - [Authentication](#authentication)
@@ -34,7 +34,7 @@ AutiSense is a Next.js 16 web application that provides AI-powered autism screen
 - **Offline-first data** — IndexedDB (Dexie.js) for local storage with DynamoDB sync when online
 - **Adaptive therapy** — 7 post-diagnosis games with dynamic difficulty adjustment
 
-The app runs a full 12-step screening flow in ~15 minutes, producing domain scores for gaze, motor, vocalization, and behavioral patterns. No video or audio ever leaves the device.
+The app runs a full 10-step screening flow in ~15 minutes, producing domain scores for gaze, motor, vocalization, and behavioral patterns. No video or audio ever leaves the device.
 
 ---
 
@@ -43,7 +43,7 @@ The app runs a full 12-step screening flow in ~15 minutes, producing domain scor
 ```
 Browser (Client)
 ├── Main Thread (Next.js App Router)
-│   ├── 12-step intake flow
+│   ├── 10-step intake flow
 │   ├── Dashboard + child profiles
 │   ├── 7 therapy games
 │   ├── Community feed
@@ -96,7 +96,7 @@ Server (Amplify SSR / Lambda)
 | Feature | Status | Files |
 |---------|--------|-------|
 | Landing page | Done | `app/page.tsx` |
-| 12-step intake flow | Done | `app/intake/*/page.tsx` (10 pages) |
+| 10-step intake flow | Done | `app/intake/*/page.tsx` (10 pages) |
 | ONNX video behavioral analysis | Done | `app/intake/video-capture/page.tsx`, `app/lib/inference/*` |
 | Session biomarker tracking | Done | `app/lib/db/biomarker.repository.ts` |
 | Summary with domain scores | Done | `app/intake/summary/page.tsx` |
@@ -126,22 +126,22 @@ Server (Amplify SSR / Lambda)
 
 ---
 
-## Intake Flow (12 Steps)
+## Intake Flow (10 Steps)
 
 | Step | Page | What It Tests | Biomarker Output |
 |------|------|--------------|-----------------|
 | 1 | `/intake/profile` | Parental consent | — |
 | 2 | `/intake/child-profile` | Child info (name, DOB, language) | Creates session in IndexedDB |
 | 3 | `/intake/device-check` | Camera + microphone permissions | — |
-| 4 | `/intake/communication` | Speech recognition (child's voice) | `vocalizationScore` |
-| 5 | `/intake/visual-engagement` | Social vs non-social tap preference | `gazeScore` |
-| 6 | `/intake/behavioral-observation` | Free-play bubble pop reaction time | `motorScore`, `responseLatencyMs` |
-| 7 | `/intake/preparation` | Dynamic AI voice conversation (Bedrock + Polly + Web Speech API) | `gazeScore` (relevance), `motorScore`, `vocalizationScore`, `responseLatencyMs` |
-| 8 | `/intake/motor` | Tap-the-target motor coordination | `motorScore`, `responseLatencyMs` |
-| 9 | `/intake/audio` | Audio echo (Polly TTS + SpeechRecognition) | `vocalizationScore` |
-| 10 | `/intake/video-capture` | ONNX behavioral video analysis | `gazeScore`, `motorScore`, `asdRiskScore`, behavior classes |
-| 11 | `/intake/summary` | Aggregated domain scores from all stages | — |
-| 12 | `/intake/report` | AI-generated clinical report (Bedrock) | PDF download |
+| 4 | `/intake/communication` | Word Echo — speech recognition | `vocalizationScore` |
+| 5 | `/intake/behavioral-observation` | Free-play bubble pop reaction time | `motorScore`, `responseLatencyMs` |
+| 6 | `/intake/preparation` | Action Challenge — YOLO motor verification | `motorScore`, `responseLatencyMs` |
+| 7 | `/intake/motor` | Tap-the-target motor coordination | `motorScore`, `responseLatencyMs` |
+| 8 | `/intake/video-capture` | ONNX behavioral video analysis | `gazeScore`, `motorScore`, `asdRiskScore`, behavior classes |
+| 9 | `/intake/summary` | Aggregated domain scores from all stages | — |
+| 10 | `/intake/report` | AI-generated clinical report (Bedrock) | PDF download |
+
+> **Archived stages** (files kept, removed from navigation): Visual Engagement (`/intake/visual-engagement`), Audio Assessment (`/intake/audio`)
 
 ---
 
@@ -280,7 +280,7 @@ Difficulty engine (`app/lib/games/difficultyEngine.ts`) auto-adjusts based on re
 
 | File | Tests | Coverage |
 |------|-------|----------|
-| `tests/intake-flow.spec.ts` | 15 | Full 12-step intake flow navigation, form validation, back buttons |
+| `tests/intake-flow.spec.ts` | 15 | Full 10-step intake flow navigation, form validation, back buttons, skip stage |
 | `tests/app-pages.spec.ts` | 15 | Auth, dashboard, all 7 games, feed, 4 API endpoints |
 | **Total** | **30** | **All passing** |
 
@@ -569,3 +569,30 @@ npx playwright test    # Run all 30 tests
 - Updated: `app/lib/actions/actionDetector.ts` (consecutiveHits in tracker return)
 - Updated: `tests/intake-flow.spec.ts` (Step 4, 7, 9 test assertions)
 - Updated: `tests/app-pages.spec.ts` (generate-words API test)
+
+### v1.6.0 — 2026-03-05 (10-Step Flow, Age Scoring, Skip Buttons, Camera Fixes)
+
+**Major Changes:**
+- **Streamlined to 10-step flow**: Archived Visual Engagement (emoji tap) and Audio Assessment (sentence echo) stages. Navigation rewired to skip them — files preserved for potential future use.
+- **Age-grouped scoring**: New `ageNormalization.ts` with 4 age brackets (12-24mo, 24-48mo, 48-72mo, 72+mo). Younger children get relaxed multipliers (e.g., 12-24mo: gaze×1.4, motor×1.5, vocal×1.6) and lower DSM-5 flag thresholds. A neurotypical child now scores ~93-100% instead of ~72%.
+- **Domain-aware aggregation**: Each task only contributes to domains it actually measures (e.g., communication → vocal only, motor → motor only). Hardcoded 0.5 placeholders no longer drag down unrelated domain scores. Default 0.75 for unmeasured domains.
+- **Skip Stage on all assessments**: New `SkipStageDialog` component added to all 5 assessment stages (communication, behavioral-observation, preparation, motor, video-capture). Shows confirmation modal before skipping. Saves default 0.5 biomarkers on skip.
+
+**Fixed:**
+- **Stage 7 camera not showing on desktop or mobile**: Video element was only rendered during `actionPhase === "detecting"` but camera stream was assigned during countdown when element didn't exist. Now renders camera during all active phases (countdown + detecting + detected) with countdown overlay on top.
+- **Stage 10 mobile camera hanging**: Added 10-second timeout wrapper (`withTimeout()`) to all `getUserMedia()` calls in `cameraUtils.ts`. Prevents indefinite hanging when mobile browsers stall on camera permission.
+- **Stream re-attach on DOM mount**: Defensive `useEffect` in `useActionCamera.ts` re-attaches stream when video element appears in DOM (catches ref timing issues).
+
+**Improved:**
+- **All timed assessments reduced to 30 seconds**: Behavioral observation (was 60s), motor assessment (was 45s), and video capture (was 120s) all now run for 30 seconds. Video capture criteria gate lowered to 3 samples / 15s (was 5 samples / 30s).
+- **Live transcript in communication stage**: Transcript display moved outside `listening` state — now visible during listening/matched/missed. Larger font (1.4rem Fredoka) with "Heard:" label and pulse animation during active listening.
+
+**Files:**
+- Created: `app/lib/scoring/ageNormalization.ts` (age groups, multipliers, thresholds)
+- Created: `app/components/SkipStageDialog.tsx` (shared skip confirmation)
+- Modified: `app/lib/camera/cameraUtils.ts` (10s timeout wrapper)
+- Modified: `app/hooks/useActionCamera.ts` (stream re-attach effect)
+- Modified: `app/lib/db/biomarker.repository.ts` (domain-aware + age-normalized aggregation)
+- Modified: All 10 active intake pages (STEPS array, step counts, navigation links, skip buttons)
+- Updated: `tests/intake-flow.spec.ts` (10-step flow, skip button tests)
+- Updated: `DOCS.md` (v1.6.0 changelog, 10-step flow docs)

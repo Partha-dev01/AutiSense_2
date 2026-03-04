@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 const STEPS = [
-  "Welcome", "Profile", "Device", "Communicate", "Visual", "Behavior",
-  "Prepare", "Motor", "Audio", "Video", "Summary", "Report",
+  "Welcome", "Profile", "Device", "Communicate", "Behavior",
+  "Prepare", "Motor", "Video", "Summary", "Report",
 ];
 
 type CheckStatus = "idle" | "checking" | "pass" | "fail";
@@ -140,7 +140,7 @@ export default function DeviceCheckPage() {
               fontWeight: 600,
             }}
           >
-            Step 3 of 12
+            Step 3 of 10
           </span>
         </div>
       </nav>

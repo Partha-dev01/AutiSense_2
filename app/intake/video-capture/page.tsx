@@ -9,13 +9,14 @@ import { addBiomarker } from "../../lib/db/biomarker.repository";
 import { getCurrentSessionId } from "../../lib/session/currentSession";
 import { getUserMediaWithFallback, getCameraErrorMessage } from "../../lib/camera/cameraUtils";
 import type { PipelineResult } from "../../types/inference";
+import SkipStageDialog from "../../components/SkipStageDialog";
 
 const STEPS = [
-  "Welcome", "Profile", "Device", "Communicate", "Visual", "Behavior",
-  "Prepare", "Motor", "Audio", "Video", "Summary", "Report",
+  "Welcome", "Profile", "Device", "Communicate", "Behavior",
+  "Prepare", "Motor", "Video", "Summary", "Report",
 ];
-const STEP_IDX = 9;
-const ASSESSMENT_SECONDS = 120; // 2 minutes
+const STEP_IDX = 7;
+const ASSESSMENT_SECONDS = 30; // 30 seconds
 const BIOMARKER_SAVE_INTERVAL = 5_000; // save a snapshot every 5 seconds
 
 export default function VideoCapturePage() {
@@ -55,6 +56,24 @@ export default function VideoCapturePage() {
     setTheme(next);
     document.documentElement.setAttribute("data-theme", next);
   };
+
+  const handleSkipStage = useCallback(async () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+    }
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (biomarkerTimerRef.current) clearInterval(biomarkerTimerRef.current);
+    const sid = getCurrentSessionId();
+    if (sid) {
+      await addBiomarker(sid, "behavioral_video", {
+        gazeScore: 0.5,
+        motorScore: 0.5,
+        vocalizationScore: 0.5,
+      }).catch(() => {});
+    }
+    const sessionParam = sid ? `?sessionId=${sid}` : "";
+    router.push(`/intake/summary${sessionParam}`);
+  }, [router]);
 
   // Save a biomarker snapshot from the current inference result
   const saveBiomarkerSnapshot = useCallback(async () => {
@@ -172,7 +191,7 @@ export default function VideoCapturePage() {
             {theme === "light" ? "🌙" : "☀️"}
           </button>
           <span style={{ fontSize: "0.88rem", color: "var(--text-muted)", fontWeight: 600 }}>
-            Step {STEP_IDX + 1} of 12
+            Step {STEP_IDX + 1} of 10
           </span>
         </div>
       </nav>
@@ -190,7 +209,8 @@ export default function VideoCapturePage() {
         </div>
       </div>
 
-      <main className="main-wide">
+      <main className="main-wide" style={{ position: "relative" }}>
+        <SkipStageDialog onConfirm={handleSkipStage} />
         {!started ? (
           <div style={{ maxWidth: 620, margin: "0 auto" }}>
             <div className="fade fade-1" style={{ textAlign: "center", marginBottom: 28 }}>
@@ -199,7 +219,7 @@ export default function VideoCapturePage() {
               </div>
             </div>
 
-            <div className="chip fade fade-1">Step 10 — Video Analysis</div>
+            <div className="chip fade fade-1">Step 8 — Video Analysis</div>
             <h1 className="page-title fade fade-2">
               Behavioral <em>screening</em>
             </h1>
@@ -217,7 +237,7 @@ export default function VideoCapturePage() {
             </div>
 
             <div className="fade fade-4" style={{ display: "flex", gap: 12 }}>
-              <Link href="/intake/audio" className="btn btn-outline" style={{ minWidth: 100 }}>
+              <Link href="/intake/motor" className="btn btn-outline" style={{ minWidth: 100 }}>
                 ← Back
               </Link>
               <button className="btn btn-primary btn-full" onClick={startAssessment}>
@@ -297,8 +317,8 @@ export default function VideoCapturePage() {
           </div>
         ) : (
           <div style={{ maxWidth: 620, margin: "0 auto" }}>
-            {/* Criteria gate: need at least 5 samples and 30s elapsed */}
-            {samplesCollected < 5 && (ASSESSMENT_SECONDS - timeLeft) < 30 && !forceComplete ? (
+            {/* Criteria gate: need at least 3 samples and 15s elapsed */}
+            {samplesCollected < 3 && (ASSESSMENT_SECONDS - timeLeft) < 15 && !forceComplete ? (
               <div className="card fade fade-3" style={{ padding: "32px 28px", textAlign: "center", background: "var(--peach-50)", borderColor: "var(--peach-300)" }}>
                 <div style={{ fontSize: "2.5rem", marginBottom: 14 }}>🔄</div>
                 <h2 style={{ fontFamily: "'Fredoka',sans-serif", fontWeight: 600, fontSize: "1.3rem", marginBottom: 10 }}>
@@ -306,7 +326,7 @@ export default function VideoCapturePage() {
                 </h2>
                 <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: 20 }}>
                   Only {samplesCollected} samples in {ASSESSMENT_SECONDS - timeLeft}s.
-                  We need at least 5 samples and 30 seconds for reliable results.
+                  We need at least 3 samples and 15 seconds for reliable results.
                 </p>
                 <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
                   <button className="btn btn-primary" onClick={() => {
@@ -380,7 +400,7 @@ export default function VideoCapturePage() {
             </div>
 
             <div className="fade fade-4" style={{ display: "flex", gap: 12, marginTop: 20 }}>
-              <Link href="/intake/audio" className="btn btn-outline" style={{ minWidth: 100 }}>
+              <Link href="/intake/motor" className="btn btn-outline" style={{ minWidth: 100 }}>
                 ← Back
               </Link>
               <button className="btn btn-primary btn-full"

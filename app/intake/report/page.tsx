@@ -8,10 +8,10 @@ import type { BiomarkerAggregate } from "../../types/biomarker";
 import type { Session } from "../../types/session";
 
 const STEPS = [
-  "Welcome", "Profile", "Device", "Communicate", "Visual", "Behavior",
-  "Prepare", "Motor", "Audio", "Video", "Summary", "Report",
+  "Welcome", "Profile", "Device", "Communicate", "Behavior",
+  "Prepare", "Motor", "Video", "Summary", "Report",
 ];
-const STEP_IDX = 11;
+const STEP_IDX = 9;
 
 type ReportType = "summary" | "clinical";
 
@@ -69,12 +69,11 @@ function ReportPage() {
 
     async function loadData() {
       try {
-        const [sess, agg] = await Promise.all([
-          getSession(sessionId!),
-          aggregateBiomarkers(sessionId!),
-        ]);
+        const sess = await getSession(sessionId!);
         if (cancelled) return;
         if (sess) setSession(sess);
+        const agg = await aggregateBiomarkers(sessionId!, sess?.ageMonths);
+        if (cancelled) return;
         if (agg) setBiomarkers(agg);
       } catch (err) {
         console.error("[Report] Failed to load session data:", err);
@@ -227,7 +226,7 @@ function ReportPage() {
             {theme === "light" ? "\u{1F319}" : "\u{2600}\u{FE0F}"}
           </button>
           <span style={{ fontSize: "0.88rem", color: "var(--text-muted)", fontWeight: 600 }}>
-            Step {STEP_IDX + 1} of 12
+            Step {STEP_IDX + 1} of 10
           </span>
         </div>
       </nav>
@@ -252,7 +251,7 @@ function ReportPage() {
           </div>
         </div>
 
-        <div className="chip fade fade-1">Step 12 -- Clinical Report</div>
+        <div className="chip fade fade-1">Step 10 -- Clinical Report</div>
         <h1 className="page-title fade fade-2">
           Your <em>clinical report</em>
         </h1>
