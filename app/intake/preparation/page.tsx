@@ -56,7 +56,7 @@ export default function PreparationPage() {
   const router = useRouter();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [phase, setPhase] = useState<Phase>("pre_start");
-  const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
+  const [_conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
   const [turnData, setTurnData] = useState<TurnBiomarker[]>([]);
   const [currentAgentText, setCurrentAgentText] = useState("");
   const [currentTranscript, setCurrentTranscript] = useState("");
