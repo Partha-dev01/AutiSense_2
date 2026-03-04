@@ -65,7 +65,7 @@ export default function CommunicationPage() {
         const res = await fetch("/api/chat/generate-words", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ageMonths, count: 6, mode: "words" }),
+          body: JSON.stringify({ ageMonths, count: 4, mode: "words" }),
         });
         if (!cancelled && res.ok) {
           const data = await res.json();

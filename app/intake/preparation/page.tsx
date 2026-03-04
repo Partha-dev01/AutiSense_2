@@ -14,11 +14,11 @@ const STEPS = [
 ];
 const STEP_IDX = 5;
 
-const ACTIONS: ActionId[] = ["wave", "touch_nose", "clap", "raise_arms", "touch_head", "touch_ears"];
+const ACTIONS: ActionId[] = ["wave", "touch_nose", "clap", "raise_arms"];
 const ACTION_TIMEOUT_MS = 15_000;
 const SUCCESS_DISPLAY_MS = 1500;
 const COUNTDOWN_SECONDS = 3;
-const MIN_DETECTED = 3; // Criteria gate
+const MIN_DETECTED = 2; // Criteria gate
 
 type Phase = "pre_start" | "active" | "complete";
 type ActionPhase = "countdown" | "detecting" | "detected" | "timeout";

@@ -229,7 +229,7 @@ export function detectAction(
 
 // ── Sustained detection tracker ─────────────────────────────────────
 
-const REQUIRED_CONSECUTIVE = 5;
+const REQUIRED_CONSECUTIVE = 8;
 
 export class ActionTracker {
   private consecutiveHits = 0;
