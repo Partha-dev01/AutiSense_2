@@ -10,6 +10,7 @@
  */
 
 import { AUTH_CONFIG } from "./config";
+import { getAppCredentials, getAppRegion } from "../aws/credentials";
 
 // ─── Types ───────────────────────────────────────────────────────────
 export interface AuthUser {
@@ -41,11 +42,12 @@ function shouldUseDynamo(): boolean {
   if (
     process.env.NODE_ENV === "development" &&
     !process.env.AWS_ACCESS_KEY_ID &&
+    !process.env.APP_ACCESS_KEY_ID &&
     !process.env.AWS_REGION
   ) {
     return false;
   }
-  // In production (Amplify), always try DynamoDB — IAM role provides creds
+  // In production (Amplify), always try DynamoDB
   return true;
 }
 
@@ -123,8 +125,10 @@ async function getDynamoClient() {
   const { DynamoDBClient } = await import("@aws-sdk/client-dynamodb");
   const { DynamoDBDocumentClient } = await import("@aws-sdk/lib-dynamodb");
 
+  const credentials = getAppCredentials();
   const client = new DynamoDBClient({
-    region: process.env.AWS_REGION || "ap-south-1",
+    region: getAppRegion("ap-south-1"),
+    ...(credentials && { credentials }),
   });
   return DynamoDBDocumentClient.from(client);
 }

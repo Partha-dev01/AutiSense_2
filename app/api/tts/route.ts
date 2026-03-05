@@ -18,19 +18,18 @@ import {
   SynthesizeSpeechCommand,
   type VoiceId,
 } from "@aws-sdk/client-polly";
+import { getAppCredentials, getAppRegion } from "../../lib/aws/credentials";
 
 interface TtsRequestBody {
   text: string;
   voiceId?: string;
 }
 
-// Use POLLY_REGION if set, otherwise fall back to AWS_REGION (auto-set on Lambda)
-const POLLY_REGION = process.env.POLLY_REGION || process.env.AWS_REGION || "ap-south-1";
+const POLLY_REGION = process.env.POLLY_REGION || getAppRegion("ap-south-1");
 
-// Don't pass explicit credentials — the SDK default credential provider chain
-// handles Lambda IAM roles (with session tokens) and local dev env vars.
 function getPollyClient(): PollyClient {
-  return new PollyClient({ region: POLLY_REGION });
+  const credentials = getAppCredentials();
+  return new PollyClient({ region: POLLY_REGION, ...(credentials && { credentials }) });
 }
 
 export async function POST(req: NextRequest) {

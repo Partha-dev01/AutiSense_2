@@ -19,11 +19,12 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import type { SessionSyncPayload } from "../../types/session";
 import type { BiomarkerAggregate } from "../../types/biomarker";
+import { getAppCredentials, getAppRegion } from "../../lib/aws/credentials";
 
-// Don't pass explicit credentials — let the SDK use its default credential
-// provider chain (Lambda IAM role on Amplify, env vars or ~/.aws on local dev).
+const appCredentials = getAppCredentials();
 const dynamoClient = new DynamoDBClient({
-  region: process.env.AWS_REGION ?? "ap-south-1",
+  region: getAppRegion("ap-south-1"),
+  ...(appCredentials && { credentials: appCredentials }),
 });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 

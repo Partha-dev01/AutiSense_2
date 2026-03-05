@@ -34,6 +34,10 @@ const nextConfig: NextConfig = {
     DYNAMODB_CHILD_PROFILES_TABLE: process.env.DYNAMODB_CHILD_PROFILES_TABLE ?? "",
     DYNAMODB_SESSION_SUMMARIES_TABLE: process.env.DYNAMODB_SESSION_SUMMARIES_TABLE ?? "",
     DYNAMODB_FEED_POSTS_TABLE: process.env.DYNAMODB_FEED_POSTS_TABLE ?? "",
+    // Amplify blocks AWS_* prefix — use custom names for SDK credentials
+    APP_ACCESS_KEY_ID: process.env.APP_ACCESS_KEY_ID ?? "",
+    APP_SECRET_ACCESS_KEY: process.env.APP_SECRET_ACCESS_KEY ?? "",
+    APP_REGION: process.env.APP_REGION ?? "",
   },
 
   // Required for SharedArrayBuffer (ONNX WASM multi-threading)

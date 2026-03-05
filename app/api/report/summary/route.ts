@@ -18,6 +18,7 @@ import {
   InvokeModelCommand,
 } from "@aws-sdk/client-bedrock-runtime";
 import type { BiomarkerAggregate } from "../../../types/biomarker";
+import { getAppCredentials } from "../../../lib/aws/credentials";
 
 interface SummaryRequestBody {
   sessionId: string;
@@ -26,10 +27,9 @@ interface SummaryRequestBody {
 
 const BEDROCK_REGION = process.env.BEDROCK_REGION || "us-east-1";
 
-// Don't pass explicit credentials — the SDK default credential provider chain
-// handles Lambda IAM roles (with session tokens) and local dev env vars.
 function getBedrockClient(): BedrockRuntimeClient {
-  return new BedrockRuntimeClient({ region: BEDROCK_REGION });
+  const credentials = getAppCredentials();
+  return new BedrockRuntimeClient({ region: BEDROCK_REGION, ...(credentials && { credentials }) });
 }
 
 function buildMockSummary(biomarkers: BiomarkerAggregate): string {

@@ -17,6 +17,7 @@ import {
   BedrockRuntimeClient,
   InvokeModelCommand,
 } from "@aws-sdk/client-bedrock-runtime";
+import { getAppCredentials } from "../../../lib/aws/credentials";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -42,7 +43,8 @@ interface GeneratedItem {
 const BEDROCK_REGION = process.env.BEDROCK_REGION || "us-east-1";
 
 function getBedrockClient(): BedrockRuntimeClient {
-  return new BedrockRuntimeClient({ region: BEDROCK_REGION });
+  const credentials = getAppCredentials();
+  return new BedrockRuntimeClient({ region: BEDROCK_REGION, ...(credentials && { credentials }) });
 }
 
 /* ------------------------------------------------------------------ */
