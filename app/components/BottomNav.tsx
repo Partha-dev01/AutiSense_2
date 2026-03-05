@@ -8,7 +8,7 @@ const tabs = [
   { href: "/kid-dashboard/games", label: "Games", icon: "🎮" },
   { href: "/kid-dashboard/chat", label: "Chat", icon: "💬" },
   { href: "/kid-dashboard/progress", label: "Progress", icon: "📊" },
-  { href: "/kid-dashboard/map", label: "Map", icon: "🗺️" },
+  { href: "/kid-dashboard/nearby-help", label: "Help", icon: "🏥" },
 ];
 
 export default function BottomNav() {

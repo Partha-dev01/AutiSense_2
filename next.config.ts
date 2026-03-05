@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Redirects for removed pages
+  async redirects() {
+    return [
+      { source: "/kid-dashboard/doctor-connect", destination: "/kid-dashboard/nearby-help", permanent: true },
+      { source: "/kid-dashboard/map", destination: "/kid-dashboard/nearby-help", permanent: true },
+      { source: "/kid-dashboard/talking", destination: "/kid-dashboard/chat", permanent: true },
+    ];
+  },
+
   // Inline server-side env vars at build time.
   // Amplify SSR (WEB_COMPUTE) injects env vars into the build container
   // but NOT into the Lambda runtime. This ensures they're baked into the

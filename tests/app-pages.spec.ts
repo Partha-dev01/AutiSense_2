@@ -61,6 +61,39 @@ test.describe("Games Hub", () => {
   });
 });
 
+test.describe("New Pages", () => {
+  test("Detection page redirects to login when unauthenticated", async ({ page }) => {
+    await page.goto("/kid-dashboard/detection");
+    await page.waitForURL(/\/auth\/login/);
+    expect(page.url()).toContain("/auth/login");
+    expect(page.url()).toContain("returnTo=%2Fkid-dashboard%2Fdetection");
+  });
+
+  test("Nearby Help page redirects to login when unauthenticated", async ({ page }) => {
+    await page.goto("/kid-dashboard/nearby-help");
+    await page.waitForURL(/\/auth\/login/);
+    expect(page.url()).toContain("/auth/login");
+    expect(page.url()).toContain("returnTo=%2Fkid-dashboard%2Fnearby-help");
+  });
+});
+
+test.describe("Redirects", () => {
+  test("Old talking page redirects to chat", async ({ page }) => {
+    await page.goto("/kid-dashboard/talking");
+    await page.waitForURL(/\/(kid-dashboard\/chat|auth\/login)/);
+  });
+
+  test("Old doctor-connect redirects to nearby-help", async ({ page }) => {
+    await page.goto("/kid-dashboard/doctor-connect");
+    await page.waitForURL(/\/(kid-dashboard\/nearby-help|auth\/login)/);
+  });
+
+  test("Old map page redirects to nearby-help", async ({ page }) => {
+    await page.goto("/kid-dashboard/map");
+    await page.waitForURL(/\/(kid-dashboard\/nearby-help|auth\/login)/);
+  });
+});
+
 test.describe("Community Feed", () => {
   test("Feed page redirects to login when unauthenticated", async ({ page }) => {
     await page.goto("/feed");

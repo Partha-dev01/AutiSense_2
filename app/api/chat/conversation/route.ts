@@ -111,37 +111,47 @@ For action: when domain is "motor" and turnType is "instruction", include one of
 /*  Fallback conversation                                              */
 /* ------------------------------------------------------------------ */
 
+const PERSONALITY_PREFIX: Record<string, string> = {
+  dog: "Woof! ",
+  cat: "Purrr... ",
+  rabbit: "Oh! ",
+  parrot: "Squawk! ",
+};
+
 function buildFallbackTurn(
   childName: string,
   turnNumber: number,
+  animalPersonality?: string,
 ): ConversationResponse {
+  const prefix = (animalPersonality && PERSONALITY_PREFIX[animalPersonality]) || "";
+
   const fallback: Array<Omit<ConversationResponse, "fallback">> = [
     {
-      text: `Hi ${childName}! I'm so happy to talk with you today! Are you ready to play a fun game with me?`,
+      text: `${prefix}Hi ${childName}! I'm so happy to talk with you today! Are you ready to play a fun game with me?`,
       metadata: { turnType: "greeting", expectsResponse: true, responseRelevance: 0.5, shouldEnd: false, domain: "social" },
     },
     {
-      text: `Awesome! Let's start with something fun. Can you wave hello to me?`,
+      text: `${prefix}Awesome! Let's start with something fun. Can you wave hello to me?`,
       metadata: { turnType: "instruction", expectsResponse: true, responseRelevance: 0.5, shouldEnd: false, domain: "motor", action: "wave" },
     },
     {
-      text: `Great job! Now tell me, what color is the sky?`,
+      text: `${prefix}Great job! Now tell me, what color is the sky?`,
       metadata: { turnType: "question", expectsResponse: true, responseRelevance: 0.5, shouldEnd: false, domain: "cognitive" },
     },
     {
-      text: `You're doing so well! Can you say the word banana for me?`,
+      text: `${prefix}You're doing so well! Can you say the word banana for me?`,
       metadata: { turnType: "question", expectsResponse: true, responseRelevance: 0.5, shouldEnd: false, domain: "language" },
     },
     {
-      text: `That's wonderful! Now let's try something silly. Can you touch your nose?`,
+      text: `${prefix}That's wonderful! Now let's try something silly. Can you touch your nose?`,
       metadata: { turnType: "instruction", expectsResponse: true, responseRelevance: 0.5, shouldEnd: false, domain: "motor", action: "touch_nose" },
     },
     {
-      text: `You're a superstar! What's your favorite animal?`,
+      text: `${prefix}You're a superstar! What's your favorite animal?`,
       metadata: { turnType: "question", expectsResponse: true, responseRelevance: 0.5, shouldEnd: false, domain: "social" },
     },
     {
-      text: `You did such an amazing job, ${childName}! Thank you so much for talking with me today! You're wonderful!`,
+      text: `${prefix}You did such an amazing job, ${childName}! Thank you so much for talking with me today! You're wonderful!`,
       metadata: { turnType: "farewell", expectsResponse: false, responseRelevance: 0.5, shouldEnd: true, domain: "general" },
     },
   ];
@@ -222,10 +232,10 @@ export async function POST(req: NextRequest) {
 
   const { messages, childName, ageMonths, turnNumber, animalPersonality } = body;
 
-  // Hard cap — force farewell after 8 turns
-  if (turnNumber >= 7) {
+  // Hard cap — force farewell after 15 turns
+  if (turnNumber >= 15) {
     return NextResponse.json(
-      buildFallbackTurn(childName, 6), // farewell
+      buildFallbackTurn(childName, 6, animalPersonality), // farewell
     );
   }
 
@@ -285,18 +295,18 @@ export async function POST(req: NextRequest) {
 
     if (!rawText) {
       console.warn("[Chat] Empty response from Bedrock, using fallback");
-      return NextResponse.json(buildFallbackTurn(childName, turnNumber));
+      return NextResponse.json(buildFallbackTurn(childName, turnNumber, animalPersonality));
     }
 
     const parsed = parseAgentResponse(rawText);
     if (!parsed) {
       console.warn("[Chat] Failed to parse LLM JSON, using fallback. Raw:", rawText);
-      return NextResponse.json(buildFallbackTurn(childName, turnNumber));
+      return NextResponse.json(buildFallbackTurn(childName, turnNumber, animalPersonality));
     }
 
     return NextResponse.json({ ...parsed, fallback: false } satisfies ConversationResponse);
   } catch (err) {
     console.error("[Chat] Bedrock invocation failed:", err);
-    return NextResponse.json(buildFallbackTurn(childName, turnNumber));
+    return NextResponse.json(buildFallbackTurn(childName, turnNumber, animalPersonality));
   }
 }

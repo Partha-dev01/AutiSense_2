@@ -136,7 +136,7 @@ export default function ChatPage() {
     setMessages(allMsgs); setTurnNumber(nextTurn + 1); setIsLoading(false);
     setAvatarState("talking");
     await playTTS(aiText);
-    if (shouldEnd || nextTurn + 1 >= 7) { setAvatarState("happy"); endConversation(allMsgs); return; }
+    if (shouldEnd || nextTurn + 1 >= 15) { setAvatarState("happy"); endConversation(allMsgs); return; }
     setAvatarState("idle");
   };
 

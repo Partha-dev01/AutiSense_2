@@ -16,9 +16,9 @@ const DAILY_TARGET = 3;
 
 const quickLinks = [
   { href: "/kid-dashboard/speech", emoji: "🗣️", label: "Speech", color: "var(--feature-peach)" },
-  { href: "/kid-dashboard/talking", emoji: "🤝", label: "Talking", color: "var(--feature-blue)" },
+  { href: "/kid-dashboard/detection", emoji: "📹", label: "Detection", color: "var(--feature-blue)" },
   { href: "/kid-dashboard/chat", emoji: "🐾", label: "AI Chat", color: "var(--feature-lavender)" },
-  { href: "/kid-dashboard/doctor-connect", emoji: "🩺", label: "Doctor", color: "var(--feature-green)" },
+  { href: "/kid-dashboard/nearby-help", emoji: "🏥", label: "Nearby", color: "var(--feature-green)" },
   { href: "/intake/profile", emoji: "📋", label: "Screening", color: "var(--feature-peach)" },
   { href: "/feed", emoji: "💬", label: "Community", color: "var(--feature-blue)" },
 ];
