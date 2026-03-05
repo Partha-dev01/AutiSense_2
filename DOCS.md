@@ -641,3 +641,83 @@ npx playwright test    # Run all 30 tests
 - Modified: `app/lib/actions/actionDetector.ts` (REQUIRED_CONSECUTIVE 12, decay -2, confidence gate, tighter thresholds)
 - Modified: `app/intake/preparation/page.tsx` (12-dot counter, status text thresholds)
 - Modified: `app/components/DetectorVideoCanvas.tsx` (behavior label recomputed from probs, "Normal Activity" display)
+
+### v2.0.0 — 2026-03-05 (Kids Dashboard + Major Feature Expansion)
+
+**New Features — Kids Dashboard (`/kid-dashboard`):**
+
+A complete kids-facing dashboard with bottom tab navigation, daily games, AI chat, progress tracking, weekly reports, and a nearby institutes map. The existing 10-step screening flow is completely untouched.
+
+**Phase 1: Foundation**
+- 4 new IndexedDB tables: `gameActivity`, `streaks`, `weeklyReports`, `chatHistory` (Dexie v4)
+- Repository layer: `gameActivity.repository.ts`, `streak.repository.ts`
+- Type definitions: `app/types/gameActivity.ts`
+- Kid dashboard shell: `/kid-dashboard` with bottom tab nav (Home, Games, Chat, Progress, Map)
+- Components: `BottomNav.tsx`, `StreakBadge.tsx`
+- Landing page + parent dashboard updated with Kids Dashboard links
+
+**Phase 2: New Games (6)**
+- Bubble Pop (`/kid-dashboard/games/bubble-pop`) — Tap floating bubbles matching prompts
+- Alphabet Pattern (`/kid-dashboard/games/alphabet-pattern`) — Fill missing letters in sequences
+- Basic Tracing (`/kid-dashboard/games/tracing`) — Trace shapes/letters on HTML Canvas
+- Match Numbers (`/kid-dashboard/games/match-numbers`) — Match numerals to dot quantities
+- Memory Game (`/kid-dashboard/games/memory`) — Classic flip-card pair matching
+- Social Stories V2 (`/kid-dashboard/games/social-stories-v2`) — Kid-friendly social scenarios
+- All games use adaptive difficulty engine, save to `gameActivity` table, update streaks
+- Games hub (`/kid-dashboard/games`) showing all 13 games (6 new + 7 existing)
+
+**Phase 3: Speech, Talking, Doctor Connect**
+- Speech Practice (`/kid-dashboard/speech`) — Word prompts via Polly TTS + Web Speech API recognition
+- One-to-One Talking (`/kid-dashboard/talking`) — Guided AI conversation with audio mode
+- Doctor Connect (`/kid-dashboard/doctor-connect`) — Hardcoded specialist directory with call links
+- Static doctor data: `app/lib/data/doctors.ts`
+
+**Phase 4: AI Chat with Animated Animals**
+- Chat page (`/kid-dashboard/chat`) — Select animal avatar (dog/cat/rabbit/parrot) + gender
+- SVG animal avatars with CSS animations: idle, talking, happy, thinking states
+- Text + audio chat modes via `/api/chat/conversation` + `/api/tts`
+- Animal personality system: each animal has unique speech patterns
+- Modified `/api/chat/conversation/route.ts` to accept `animalPersonality` parameter
+- Conversations saved to `chatHistory` table
+- Component: `AnimalAvatar.tsx`
+
+**Phase 5: Streak + Progress Tracking**
+- Streak system: consecutive daily play tracking with motivational messages
+- Progress page (`/kid-dashboard/progress`) — Three tabs: Today, This Week, All Time
+- Daily: games played, avg score, time spent with activity list
+- Weekly: 7-day heatmap, per-game breakdown bars
+- All Time: total games, best/current streak, favorite game, 4-week trend
+
+**Phase 6: Weekly Reports**
+- Report generator: `app/lib/reports/weeklyReport.ts` — kid + parent HTML versions
+- API: `POST /api/report/weekly` (generate + save), `GET /api/report/weekly?childId=` (list)
+- Reports page (`/kid-dashboard/reports`) — Generate, view (kid/parent toggle), list history
+- Kid version: colorful, emoji-heavy, encouraging
+- Parent version: detailed tables, trends, recommendations
+
+**Phase 7: Nearby Institutes Map**
+- Map page (`/kid-dashboard/map`) — Leaflet.js + OpenStreetMap (graceful fallback to list view)
+- 50+ autism institutes across 12 Indian cities (Delhi, Mumbai, Bangalore, Chennai, etc.)
+- 4 categories: Hospital, Therapy Center, Special School, Support Group (color-coded)
+- Search by name/city, category filters, "Near Me" geolocation with distance sorting
+- Static data: `app/lib/data/institutes.ts`
+
+**New Files (27):**
+- Types: `app/types/gameActivity.ts`
+- DB: `app/lib/db/gameActivity.repository.ts`, `app/lib/db/streak.repository.ts`
+- Layout: `app/kid-dashboard/layout.tsx`
+- Pages: `app/kid-dashboard/page.tsx`, `app/kid-dashboard/games/page.tsx`, 6 game pages, `speech/page.tsx`, `talking/page.tsx`, `doctor-connect/page.tsx`, `chat/page.tsx`, `progress/page.tsx`, `reports/page.tsx`, `map/page.tsx`
+- Components: `app/components/BottomNav.tsx`, `app/components/StreakBadge.tsx`, `app/components/AnimalAvatar.tsx`
+- Data: `app/lib/data/doctors.ts`, `app/lib/data/institutes.ts`
+- Reports: `app/lib/reports/weeklyReport.ts`
+- API: `app/api/report/weekly/route.ts`
+
+**Modified Files (4):**
+- `app/lib/db/schema.ts` — v4 migration with 4 new tables
+- `app/api/chat/conversation/route.ts` — animalPersonality support
+- `app/page.tsx` — Kids Dashboard CTA card
+- `app/dashboard/page.tsx` — Kids Dashboard quick link
+
+**Unchanged:** All 10 intake pages, all inference code, all 7 existing games, auth system, existing components.
+
+**Testing:** 31/31 Playwright tests pass. TypeScript clean. Build clean.

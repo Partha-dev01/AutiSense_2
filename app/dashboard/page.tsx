@@ -297,6 +297,13 @@ export default function DashboardPage() {
               style={{ display: "flex", gap: 12, marginBottom: 36, flexWrap: "wrap" }}
             >
               <Link
+                href="/kid-dashboard"
+                className="btn btn-primary"
+                style={{ minHeight: 48, padding: "10px 24px", fontSize: "0.95rem" }}
+              >
+                Kids Dashboard
+              </Link>
+              <Link
                 href="/games"
                 className="btn btn-secondary"
                 style={{ minHeight: 48, padding: "10px 24px", fontSize: "0.95rem" }}

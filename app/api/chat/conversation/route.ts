@@ -33,6 +33,7 @@ interface ConversationRequest {
   childName: string;
   ageMonths: number;
   turnNumber: number;
+  animalPersonality?: string; // "dog" | "cat" | "rabbit" | "parrot" — for kid-dashboard chat
 }
 
 interface TurnMetadata {
@@ -64,12 +65,23 @@ function getBedrockClient(): BedrockRuntimeClient {
 /*  System prompt                                                      */
 /* ------------------------------------------------------------------ */
 
-function buildSystemPrompt(childName: string, ageMonths: number): string {
+function buildSystemPrompt(childName: string, ageMonths: number, animalPersonality?: string): string {
   const years = Math.floor(ageMonths / 12);
   const months = ageMonths % 12;
   const ageStr = months > 0 ? `${years} years and ${months} months` : `${years} years`;
 
-  return `You are a warm, friendly voice assistant conducting a brief developmental screening conversation with a child named ${childName} who is ${ageStr} old.
+  const personalityMap: Record<string, string> = {
+    dog: "You are Buddy the Dog — enthusiastic, energetic, and encouraging. Use phrases like 'Woof! That's amazing!' and 'Pawsome job!' Be very excited about everything the child says.",
+    cat: "You are Whiskers the Cat — calm, gentle, and soothing. Use phrases like 'Purrr... that's lovely' and 'How wonderful...' Be soft-spoken and reassuring.",
+    rabbit: "You are Clover the Rabbit — curious, wonder-filled, and inquisitive. Use phrases like 'Oh! I wonder...' and 'How interesting!' Ask follow-up questions gently.",
+    parrot: "You are Polly the Parrot — playful, fun-loving, and repetitive. Use phrases like 'Squawk! Say that again!' and 'That's so fun!' Occasionally repeat what the child says with excitement.",
+  };
+
+  const personalityInstruction = animalPersonality && personalityMap[animalPersonality]
+    ? `\n\nPERSONALITY: ${personalityMap[animalPersonality]}\n`
+    : "";
+
+  return `You are a warm, friendly voice assistant conducting a brief developmental screening conversation with a child named ${childName} who is ${ageStr} old.${personalityInstruction}
 
 RULES:
 1. Keep every response to 1-2 SHORT sentences. This will be spoken aloud by text-to-speech.
@@ -208,7 +220,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { messages, childName, ageMonths, turnNumber } = body;
+  const { messages, childName, ageMonths, turnNumber, animalPersonality } = body;
 
   // Hard cap — force farewell after 8 turns
   if (turnNumber >= 7) {
@@ -225,13 +237,13 @@ export async function POST(req: NextRequest) {
     // First turn: system prompt asks for greeting
     novaMessages.push({
       role: "user",
-      content: [{ text: buildSystemPrompt(childName, ageMonths) + "\n\nPlease greet the child now." }],
+      content: [{ text: buildSystemPrompt(childName, ageMonths, animalPersonality) + "\n\nPlease greet the child now." }],
     });
   } else {
     // Multi-turn: system prompt + conversation history
     novaMessages.push({
       role: "user",
-      content: [{ text: buildSystemPrompt(childName, ageMonths) + "\n\nBegin the conversation." }],
+      content: [{ text: buildSystemPrompt(childName, ageMonths, animalPersonality) + "\n\nBegin the conversation." }],
     });
 
     for (const msg of messages) {

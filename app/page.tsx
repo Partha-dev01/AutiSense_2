@@ -304,6 +304,11 @@ export default function LandingPage() {
               <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: 4 }}>Dashboard</div>
               <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>View your screenings</div>
             </Link>
+            <Link href="/kid-dashboard" className="card" style={{ padding: "22px 18px", textDecoration: "none", textAlign: "center" }}>
+              <div style={{ fontSize: "1.8rem", marginBottom: 10 }}>{"\u{1F476}"}</div>
+              <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: 4 }}>Kids Dashboard</div>
+              <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>Games, chat & progress</div>
+            </Link>
             <Link href="/games" className="card" style={{ padding: "22px 18px", textDecoration: "none", textAlign: "center" }}>
               <div style={{ fontSize: "1.8rem", marginBottom: 10 }}>{"\u{1F3AE}"}</div>
               <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: 4 }}>Therapy Games</div>
