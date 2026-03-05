@@ -596,3 +596,19 @@ npx playwright test    # Run all 30 tests
 - Modified: All 10 active intake pages (STEPS array, step counts, navigation links, skip buttons)
 - Updated: `tests/intake-flow.spec.ts` (10-step flow, skip button tests)
 - Updated: `DOCS.md` (v1.6.0 changelog, 10-step flow docs)
+
+### v1.6.1 — 2026-03-05 (Video Capture Camera Fix)
+
+**Fixed:**
+- **Stage 8 (Video Capture) camera stuck on "Requesting camera..."**: Root cause was a race condition — `startCamera()` obtained the MediaStream but `videoRef.current` was `null` because `DetectorVideoCanvas` (containing the `<video>` element) only renders after `setStarted(true)`, which runs after `startCamera()` returns. `setCamReady(true)` was inside `if (video)` block and never called. Fixed by:
+  1. Moving `setCamReady(true)` outside the `if (video)` block — camera is marked ready once the stream is obtained, regardless of whether the video DOM element exists yet.
+  2. Added 200ms interval re-attach effect (same pattern as `useActionCamera.ts`) that connects the stream to the video element when it appears in the DOM after React render.
+- **Description text still said "2 minutes"**: Updated to "30 seconds" to match the actual `ASSESSMENT_SECONDS = 30` setting.
+
+**Issues Log:**
+- Camera race condition was specific to `video-capture/page.tsx` because it uses `useDetectorInference` directly (not `useActionCamera` which already had the re-attach pattern).
+- The preparation page (Stage 6) never had this issue because `useActionCamera.ts` already polls every 300ms to re-attach lost streams.
+- Desktop and mobile both affected — the `<video>` element mounting timing is the same regardless of platform.
+
+**Files:**
+- Modified: `app/intake/video-capture/page.tsx` (setCamReady moved, stream re-attach effect, description text fix)

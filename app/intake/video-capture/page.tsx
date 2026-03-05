@@ -125,8 +125,11 @@ export default function VideoCapturePage() {
             throw playErr;
           }
         }
-        setCamReady(true);
       }
+      // Always mark camera ready once stream is obtained — the video element
+      // may not exist yet (renders after setStarted(true)), so the re-attach
+      // effect below will connect it when the DOM element appears.
+      setCamReady(true);
     } catch (err) {
       setCamError(getCameraErrorMessage(err));
     }
@@ -142,6 +145,21 @@ export default function VideoCapturePage() {
       if (biomarkerTimerRef.current) clearInterval(biomarkerTimerRef.current);
     };
   }, []);
+
+  // Re-attach stream when video element becomes available after render.
+  // The <video> lives inside DetectorVideoCanvas which only mounts after
+  // setStarted(true) — but startCamera() may have already obtained the stream.
+  useEffect(() => {
+    if (!started || !streamRef.current) return;
+    const check = setInterval(() => {
+      const video = videoRef.current;
+      if (video && streamRef.current && !video.srcObject) {
+        video.srcObject = streamRef.current;
+        video.play().catch(() => {});
+      }
+    }, 200);
+    return () => clearInterval(check);
+  }, [started]);
 
   const startingRef = useRef(false);
 
@@ -235,7 +253,7 @@ export default function VideoCapturePage() {
               Behavioral <em>screening</em>
             </h1>
             <p className="subtitle fade fade-2">
-              The camera will observe your child&apos;s movements and expressions for 2 minutes.
+              The camera will observe your child&apos;s movements and expressions for 30 seconds.
               Body pose, facial expressions, and behavioral patterns are analyzed entirely
               on your device. <strong>No video is recorded, stored, or uploaded.</strong>
             </p>
