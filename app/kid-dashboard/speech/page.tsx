@@ -1,8 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getDifficulty, saveDifficulty } from "../../lib/games/difficultyEngine";
+
+interface SpeechRec {
+  lang: string;
+  interimResults: boolean;
+  onresult: ((e: { results: { transcript: string }[][] }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
 import { addGameActivity } from "../../lib/db/gameActivity.repository";
 import { updateStreak } from "../../lib/db/streak.repository";
 import { useAuthGuard } from "../../hooks/useAuthGuard";
@@ -46,7 +56,7 @@ export default function SpeechPracticePage() {
   const [hasSpeechApi, setHasSpeechApi] = useState(true);
   const [micError, setMicError] = useState<string | null>(null);
   const [playingAudio, setPlayingAudio] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+
 
   useEffect(() => {
     const s = (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
@@ -149,8 +159,7 @@ export default function SpeechPracticePage() {
 
     setListening(true);
     setFeedback(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const recognition = new (SR as any)();
+    const recognition = new (SR as new () => SpeechRec)();
     recognition.lang = "en-US";
     recognition.interimResults = false;
 

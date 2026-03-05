@@ -33,7 +33,7 @@ export interface AuthSession {
 // On Amplify Lambda, credentials come via IAM role (SDK auto-detects).
 // Only fall back to in-memory when DynamoDB actually fails or in local dev
 // without any AWS config.
-let dynamoFailed = false;
+const dynamoFailed = false;
 
 function shouldUseDynamo(): boolean {
   if (dynamoFailed) return false;

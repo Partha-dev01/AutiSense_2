@@ -3,6 +3,17 @@
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useAuthGuard } from "../../hooks/useAuthGuard";
+
+interface SpeechRec {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult: ((e: { results: { transcript: string }[][] }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
 import AnimalAvatar from "../../components/AnimalAvatar";
 import { db } from "../../lib/db/schema";
 import { speakText, checkMicSupport } from "../../lib/audio/ttsHelper";
@@ -44,9 +55,7 @@ export default function ChatPage() {
   const [fallbackMode, setFallbackMode] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRec | null>(null);
 
   /* ---- theme ---- */
   useEffect(() => {
@@ -154,14 +163,12 @@ export default function ChatPage() {
       (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
     if (!SR) return;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const recognition = new (SR as any)();
+    const recognition = new (SR as new () => SpeechRec)();
     recognition.lang = "en-US";
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: { results: { transcript: string }[][] }) => {
       const transcript = event.results[0]?.[0]?.transcript;
       if (transcript) sendMessage(transcript);
       setIsListening(false);

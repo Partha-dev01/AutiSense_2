@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 import { useAuth } from "../hooks/useAuth";
 
 export default function UserMenu() {
@@ -39,11 +40,13 @@ export default function UserMenu() {
         }}
       >
         {user.picture ? (
-          <img
+          <Image
             src={user.picture}
             alt=""
+            width={28}
+            height={28}
             referrerPolicy="no-referrer"
-            style={{ width: 28, height: 28, borderRadius: "50%" }}
+            style={{ borderRadius: "50%" }}
           />
         ) : (
           <span

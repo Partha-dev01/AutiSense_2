@@ -13,11 +13,17 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        bypassCSP: true,
+        launchOptions: {
+          args: ["--disable-web-security"],
+        },
+      },
     },
   ],
   webServer: {
-    command: "npm run dev -- -p 3003",
+    command: "npx next start -p 3003",
     port: 3003,
     reuseExistingServer: true,
     timeout: 60_000,
