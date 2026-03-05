@@ -39,6 +39,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (err) {
     console.error("[auth/session] Error validating session:", err);
-    return NextResponse.json({ user: null, authenticated: false }, { status: 500 });
+    return NextResponse.json({ user: null, authenticated: false }, { status: 401 });
   }
 }

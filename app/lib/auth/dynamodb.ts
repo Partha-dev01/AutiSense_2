@@ -33,7 +33,7 @@ export interface AuthSession {
 // On Amplify Lambda, credentials come via IAM role (SDK auto-detects).
 // Only fall back to in-memory when DynamoDB actually fails or in local dev
 // without any AWS config.
-const dynamoFailed = false;
+let dynamoFailed = false;
 
 function shouldUseDynamo(): boolean {
   if (dynamoFailed) return false;
@@ -47,6 +47,27 @@ function shouldUseDynamo(): boolean {
   }
   // In production (Amplify), always try DynamoDB — IAM role provides creds
   return true;
+}
+
+/**
+ * Try a DynamoDB operation; on failure, set dynamoFailed = true and
+ * transparently retry against the in-memory adapter.
+ */
+async function withFallback<T>(
+  operation: string,
+  dynamoFn: () => Promise<T>,
+  memoryFn: () => Promise<T>,
+): Promise<T> {
+  if (!shouldUseDynamo()) {
+    return memoryFn();
+  }
+  try {
+    return await dynamoFn();
+  } catch (err) {
+    console.warn(`[auth/dynamodb] ${operation} failed, falling back to in-memory:`, err);
+    dynamoFailed = true;
+    return memoryFn();
+  }
 }
 
 // ─── In-memory fallback for local dev ────────────────────────────────
@@ -231,41 +252,34 @@ const dynamoAdapter = {
   },
 };
 
-// ─── Exported interface — auto-selects adapter ───────────────────────
-function getAdapter() {
-  if (shouldUseDynamo()) {
-    return dynamoAdapter;
-  }
-  console.warn("[auth/dynamodb] Using in-memory store (DynamoDB unavailable)");
-  return memoryAdapter;
-}
+// ─── Exported interface — uses withFallback for resilience ───────────
 
 export async function createUser(user: AuthUser): Promise<AuthUser> {
-  return getAdapter().createUser(user);
+  return withFallback("createUser", () => dynamoAdapter.createUser(user), () => memoryAdapter.createUser(user));
 }
 
 export async function getUserByEmail(email: string): Promise<AuthUser | null> {
-  return getAdapter().getUserByEmail(email);
+  return withFallback("getUserByEmail", () => dynamoAdapter.getUserByEmail(email), () => memoryAdapter.getUserByEmail(email));
 }
 
 export async function getUserById(id: string): Promise<AuthUser | null> {
-  return getAdapter().getUserById(id);
+  return withFallback("getUserById", () => dynamoAdapter.getUserById(id), () => memoryAdapter.getUserById(id));
 }
 
 export async function updateUser(id: string, updates: Partial<AuthUser>): Promise<AuthUser | null> {
-  return getAdapter().updateUser(id, updates);
+  return withFallback("updateUser", () => dynamoAdapter.updateUser(id, updates), () => memoryAdapter.updateUser(id, updates));
 }
 
 export async function createAuthSession(session: AuthSession): Promise<AuthSession> {
-  return getAdapter().createAuthSession(session);
+  return withFallback("createAuthSession", () => dynamoAdapter.createAuthSession(session), () => memoryAdapter.createAuthSession(session));
 }
 
 export async function getAuthSession(token: string): Promise<AuthSession | null> {
-  return getAdapter().getAuthSession(token);
+  return withFallback("getAuthSession", () => dynamoAdapter.getAuthSession(token), () => memoryAdapter.getAuthSession(token));
 }
 
 export async function deleteAuthSession(token: string): Promise<void> {
-  return getAdapter().deleteAuthSession(token);
+  return withFallback("deleteAuthSession", () => dynamoAdapter.deleteAuthSession(token), () => memoryAdapter.deleteAuthSession(token));
 }
 
 /**
@@ -278,12 +292,10 @@ export async function upsertGoogleUser(profile: {
   name: string;
   picture: string;
 }): Promise<AuthUser> {
-  const adapter = getAdapter();
-  const existing = await adapter.getUserByEmail(profile.email);
+  const existing = await getUserByEmail(profile.email);
 
   if (existing) {
-    // Update name/picture/googleId if they changed
-    const updated = await adapter.updateUser(existing.id, {
+    const updated = await updateUser(existing.id, {
       name: profile.name,
       picture: profile.picture,
       googleId: profile.id,
@@ -291,7 +303,6 @@ export async function upsertGoogleUser(profile: {
     return updated!;
   }
 
-  // New user
   const now = new Date().toISOString();
   const newUser: AuthUser = {
     id: crypto.randomUUID(),
@@ -302,7 +313,7 @@ export async function upsertGoogleUser(profile: {
     createdAt: now,
     updatedAt: now,
   };
-  return adapter.createUser(newUser);
+  return createUser(newUser);
 }
 
 /**
