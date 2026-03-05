@@ -6,6 +6,7 @@ import { createPost, listPosts, addReaction, deletePost } from "../lib/db/feed.r
 import { getCurrentUserId } from "../lib/identity/identity";
 import { useAuthGuard } from "../hooks/useAuthGuard";
 import type { FeedPost } from "../types/feedPost";
+import NavLogo from "../components/NavLogo";
 
 type Category = "all" | FeedPost["category"];
 
@@ -125,9 +126,7 @@ export default function FeedPage() {
     <div className="page">
       {/* Nav */}
       <nav className="nav">
-        <Link href="/" className="logo">
-          Auti<em>Sense</em>
-        </Link>
+        <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button
             onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
@@ -138,7 +137,7 @@ export default function FeedPage() {
             {theme === "light" ? "Dark" : "Light"}
           </button>
           <Link
-            href="/dashboard"
+            href="/kid-dashboard"
             className="btn btn-outline"
             style={{ minHeight: 40, padding: "8px 16px", fontSize: "0.9rem" }}
           >

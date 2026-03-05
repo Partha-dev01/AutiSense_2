@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuthGuard } from "../hooks/useAuthGuard";
+import NavLogo from "../components/NavLogo";
 
 const games = [
   {
@@ -83,9 +84,7 @@ export default function GamesHubPage() {
     <div className="page">
       {/* Nav */}
       <nav className="nav">
-        <Link href="/" className="logo">
-          Auti<em>Sense</em>
-        </Link>
+        <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button
             onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
@@ -96,7 +95,7 @@ export default function GamesHubPage() {
             {theme === "light" ? "Dark" : "Light"}
           </button>
           <Link
-            href="/dashboard"
+            href="/kid-dashboard"
             className="btn btn-outline"
             style={{ minHeight: 40, padding: "8px 16px", fontSize: "0.9rem" }}
           >

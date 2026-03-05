@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
 import { useAuthGuard } from "../../hooks/useAuthGuard";
 import { INSTITUTES, CATEGORY_LABELS, CATEGORY_COLORS, type Institute } from "../../lib/data/institutes";
+import NavLogo from "../../components/NavLogo";
 
 type CategoryFilter = Institute["category"] | "all";
 
@@ -115,7 +116,7 @@ export default function MapPage() {
   return (
     <div className="page">
       <nav className="nav">
-        <Link href="/" className="logo">Auti<em>Sense</em></Link>
+        <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button
             onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}

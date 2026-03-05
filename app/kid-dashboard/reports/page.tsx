@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuthGuard } from "../../hooks/useAuthGuard";
 import type { WeeklyReport } from "../../types/gameActivity";
 import { db } from "../../lib/db/schema";
+import NavLogo from "../../components/NavLogo";
 
 type View = "kid" | "parent";
 
@@ -92,7 +93,7 @@ export default function ReportsPage() {
   return (
     <div className="page">
       <nav className="nav">
-        <Link href="/" className="logo">Auti<em>Sense</em></Link>
+        <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button
             onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}

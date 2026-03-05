@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuthGuard } from "../../hooks/useAuthGuard";
+import NavLogo from "../../components/NavLogo";
 
 const games = [
   { id: "bubble-pop", emoji: "🫧", title: "Bubble Pop", description: "Pop the right bubbles as they float up! Builds focus and reaction speed.", color: "var(--feature-blue)", isNew: true },
@@ -140,7 +141,7 @@ export default function KidGamesHubPage() {
   return (
     <div className="page">
       <nav className="nav">
-        <Link href="/" className="logo">Auti<em>Sense</em></Link>
+        <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button
             onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}

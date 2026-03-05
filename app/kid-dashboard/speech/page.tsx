@@ -6,6 +6,7 @@ import { getDifficulty, saveDifficulty } from "../../lib/games/difficultyEngine"
 import { addGameActivity } from "../../lib/db/gameActivity.repository";
 import { updateStreak } from "../../lib/db/streak.repository";
 import { useAuthGuard } from "../../hooks/useAuthGuard";
+import NavLogo from "../../components/NavLogo";
 
 type Screen = "start" | "play" | "result";
 
@@ -192,9 +193,7 @@ export default function SpeechPracticePage() {
   return (
     <div className="page">
       <nav className="nav">
-        <Link href="/" className="logo">
-          Auti<em>Sense</em>
-        </Link>
+        <NavLogo />
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button
             onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}

@@ -6,6 +6,7 @@ import { useAuthGuard } from "../../hooks/useAuthGuard";
 import { getTodayActivity, getActivityRange, getTotalGamesPlayed } from "../../lib/db/gameActivity.repository";
 import { getStreak } from "../../lib/db/streak.repository";
 import type { GameActivity } from "../../types/gameActivity";
+import NavLogo from "../../components/NavLogo";
 
 type Tab = "today" | "week" | "alltime";
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -173,7 +174,7 @@ export default function ProgressPage() {
   return (
     <div className="page">
       <nav className="nav">
-        <Link href="/" className="logo">Auti<em>Sense</em></Link>
+        <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button onClick={() => setTheme(t => t === "light" ? "dark" : "light")} className="btn btn-outline" style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem" }}>
             {theme === "light" ? "Dark" : "Light"}

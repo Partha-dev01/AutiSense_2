@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuthGuard } from "../../hooks/useAuthGuard";
 import { DOCTORS, type Doctor } from "../../lib/data/doctors";
+import NavLogo from "../../components/NavLogo";
 
 const SPECIALTIES = [
   "All",
@@ -55,7 +56,7 @@ export default function DoctorConnectPage() {
     <div className="page">
       {/* Nav */}
       <nav className="nav">
-        <Link href="/" className="logo">Auti<em>Sense</em></Link>
+        <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button
             onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}

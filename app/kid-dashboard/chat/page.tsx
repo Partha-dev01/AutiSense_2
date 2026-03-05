@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuthGuard } from "../../hooks/useAuthGuard";
 import AnimalAvatar from "../../components/AnimalAvatar";
 import { db } from "../../lib/db/schema";
+import NavLogo from "../../components/NavLogo";
 
 type Animal = "dog" | "cat" | "rabbit" | "parrot";
 type Gender = "boy" | "girl";
@@ -185,7 +186,7 @@ export default function ChatPage() {
   return (
     <div className="page">
       <nav className="nav">
-        <Link href="/" className="logo">Auti<em>Sense</em></Link>
+        <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button
             onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}

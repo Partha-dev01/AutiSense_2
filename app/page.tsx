@@ -97,7 +97,7 @@ export default function LandingPage() {
           {!loading && isAuthenticated ? (
             <>
               <Link
-                href="/dashboard"
+                href="/kid-dashboard"
                 className="btn btn-outline"
                 style={{ minHeight: 40, padding: "8px 16px", fontSize: "0.88rem" }}
               >
@@ -211,7 +211,7 @@ export default function LandingPage() {
           {isAuthenticated ? (
             <>
               <Link
-                href="/dashboard"
+                href="/kid-dashboard"
                 className="btn btn-primary btn-full"
                 style={{ maxWidth: 300 }}
               >
@@ -299,15 +299,10 @@ export default function LandingPage() {
               gap: 14,
             }}
           >
-            <Link href="/dashboard" className="card" style={{ padding: "22px 18px", textDecoration: "none", textAlign: "center" }}>
+            <Link href="/kid-dashboard" className="card" style={{ padding: "22px 18px", textDecoration: "none", textAlign: "center" }}>
               <div style={{ fontSize: "1.8rem", marginBottom: 10 }}>{"\u{1F4CA}"}</div>
               <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: 4 }}>Dashboard</div>
-              <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>View your screenings</div>
-            </Link>
-            <Link href="/kid-dashboard" className="card" style={{ padding: "22px 18px", textDecoration: "none", textAlign: "center" }}>
-              <div style={{ fontSize: "1.8rem", marginBottom: 10 }}>{"\u{1F476}"}</div>
-              <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: 4 }}>Kids Dashboard</div>
-              <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>Games, chat & progress</div>
+              <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>Games, progress & reports</div>
             </Link>
             <Link href="/games" className="card" style={{ padding: "22px 18px", textDecoration: "none", textAlign: "center" }}>
               <div style={{ fontSize: "1.8rem", marginBottom: 10 }}>{"\u{1F3AE}"}</div>
@@ -616,7 +611,7 @@ export default function LandingPage() {
         <div className="footer-links" style={{ marginBottom: 12 }}>
           <Link href="/">Home</Link>
           <span>{"\u00B7"}</span>
-          <Link href="/dashboard">Dashboard</Link>
+          <Link href="/kid-dashboard">Dashboard</Link>
           <span>{"\u00B7"}</span>
           <Link href="/games">Games</Link>
           <span>{"\u00B7"}</span>

@@ -7,6 +7,7 @@ import { listProfiles } from "../lib/db/childProfile.repository";
 import { getStreak } from "../lib/db/streak.repository";
 import { getTodayActivity } from "../lib/db/gameActivity.repository";
 import StreakBadge from "../components/StreakBadge";
+import NavLogo from "../components/NavLogo";
 import type { ChildProfile } from "../types/childProfile";
 import type { Streak } from "../types/gameActivity";
 
@@ -18,6 +19,8 @@ const quickLinks = [
   { href: "/kid-dashboard/talking", emoji: "🤝", label: "Talking", color: "var(--feature-blue)" },
   { href: "/kid-dashboard/chat", emoji: "🐾", label: "AI Chat", color: "var(--feature-lavender)" },
   { href: "/kid-dashboard/doctor-connect", emoji: "🩺", label: "Doctor", color: "var(--feature-green)" },
+  { href: "/intake/profile", emoji: "📋", label: "Screening", color: "var(--feature-peach)" },
+  { href: "/feed", emoji: "💬", label: "Community", color: "var(--feature-blue)" },
 ];
 
 const gameCards = [
@@ -104,7 +107,7 @@ export default function KidDashboardPage() {
     <div className="page">
       {/* Header */}
       <nav className="nav">
-        <Link href="/" className="logo">Auti<em>Sense</em></Link>
+        <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button
             onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
@@ -113,9 +116,6 @@ export default function KidDashboardPage() {
           >
             {theme === "light" ? "Dark" : "Light"}
           </button>
-          <Link href="/dashboard" className="btn btn-outline" style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem" }}>
-            Parent
-          </Link>
         </div>
       </nav>
 
@@ -233,7 +233,7 @@ export default function KidDashboardPage() {
           className="fade fade-3"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
+            gridTemplateColumns: "repeat(3, 1fr)",
             gap: 10,
             marginBottom: 28,
           }}

@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
     const sessionToken = await createSessionForUser(user.id);
 
     // ─── Set cookie & redirect ────────────────────────────────────
-    const response = NextResponse.redirect(`${appUrl}/dashboard`);
+    const response = NextResponse.redirect(`${appUrl}/kid-dashboard`);
 
     response.cookies.set(sessionCookieName, sessionToken, {
       httpOnly: true,

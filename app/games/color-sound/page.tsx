@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { getDifficulty, saveDifficulty } from "../../lib/games/difficultyEngine";
+import NavLogo from "../../components/NavLogo";
 
 type Screen = "start" | "play" | "result";
 
@@ -144,9 +145,7 @@ export default function ColorSoundPage() {
   return (
     <div className="page">
       <nav className="nav">
-        <Link href="/" className="logo">
-          Auti<em>Sense</em>
-        </Link>
+        <NavLogo />
         <button
           onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
           className="btn btn-outline"

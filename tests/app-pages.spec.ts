@@ -10,10 +10,10 @@ test.describe("Auth Pages", () => {
 
 test.describe("Dashboard", () => {
   test("Dashboard redirects to login when unauthenticated", async ({ page }) => {
-    await page.goto("/dashboard");
+    await page.goto("/kid-dashboard");
     await page.waitForURL(/\/auth\/login/);
     expect(page.url()).toContain("/auth/login");
-    expect(page.url()).toContain("returnTo=%2Fdashboard");
+    expect(page.url()).toContain("returnTo=%2Fkid-dashboard");
   });
 });
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useAuthGuard } from "../../hooks/useAuthGuard";
+import NavLogo from "../../components/NavLogo";
 
 interface ChatMessage { role: "user" | "assistant"; content: string }
 type Screen = "start" | "chat" | "result";
@@ -160,7 +161,7 @@ export default function TalkingPage() {
   return (
     <div className="page">
       <nav className="nav">
-        <Link href="/" className="logo">Auti<em>Sense</em></Link>
+        <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button
             onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect, useCallback, use } from "react";
+import NavLogo from "../../../components/NavLogo";
 import { getProfile } from "../../../lib/db/childProfile.repository";
 import { listSessions } from "../../../lib/db/session.repository";
 import { aggregateBiomarkers } from "../../../lib/db/biomarker.repository";
@@ -123,9 +124,7 @@ export default function ChildDetailPage({
     <div className="page">
       {/* Nav */}
       <nav className="nav">
-        <Link href="/" className="logo">
-          Auti<em>Sense</em>
-        </Link>
+        <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button
             onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
@@ -145,7 +144,7 @@ export default function ChildDetailPage({
       >
         {/* Back */}
         <Link
-          href="/dashboard"
+          href="/kid-dashboard"
           className="btn btn-outline"
           style={{
             minHeight: 40,
