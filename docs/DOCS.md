@@ -644,6 +644,8 @@ npx playwright test    # Run all 30 tests
 | R46 | **Landing page community links pointed to chat** | v2.5.0 redirected community links to `/kid-dashboard/chat`. Now that feed works cross-user, restored links to `/feed`. Updated CTA card and footer. `app/page.tsx` |
 | R47 | **Progress page showed duplicate game entries** | Multiple sessions of the same game appeared as separate rows. Fix: redesigned progress page to group sessions by game — one expandable card per game showing avg score, best score, and session count. Click chevron to expand dropdown with individual session details (time, duration, score). Groups sorted by most recently played. Applied to both Today and This Week tabs. `app/kid-dashboard/progress/page.tsx` |
 | R48 | **Feed API used wrong DynamoDB key schema** | API route used `{ id }` as key but the existing `autisense-feed-posts` table uses composite key `{ postId (S), createdAt (N) }`. Fix: updated all DynamoDB operations (Put, Get, Update, Delete) to use correct composite key. Feed page sends both `postId` and `createdAt` for reactions and deletes. `app/api/feed/route.ts`, `app/feed/page.tsx` |
+| R49 | **Feed page missing BottomNav** | `/feed` is outside `/kid-dashboard` layout which auto-includes BottomNav. Fix: added `<BottomNav />` directly to feed page. `app/feed/page.tsx` |
+| R50 | **Scrollbar jitter on every page load** | Every page briefly showed a second scrollbar during hydration, causing visual jitter/layout shift. Fix: hidden native scrollbar on `html`, `body`, and `.page` via `scrollbar-width: none`, `-ms-overflow-style: none`, and `::-webkit-scrollbar { display: none }`. Added `overflow: hidden` on `.page` and `overflow-x: hidden` on `body` to prevent any container-level scrollbar flash. Scroll still works via `html { overflow-y: auto }`. `app/globals.css` |
 
 ---
 
@@ -1100,8 +1102,13 @@ A complete kids-facing dashboard with bottom tab navigation, daily games, AI cha
 - Fixed DynamoDB key schema mismatch: table uses `{ postId, createdAt }` composite key, not `{ id }`
 - Updated all CRUD operations and client calls to use correct composite key
 
-**Files modified:** 6 files (`app/api/feed/route.ts`, `app/feed/page.tsx`, `app/kid-dashboard/page.tsx`, `app/kid-dashboard/progress/page.tsx`, `app/page.tsx`, `docs/DOCS.md`)
-**Resolved issues:** R44–R48
+**Scrollbar Jitter Fix:**
+- Hidden native scrollbar globally on `html`, `body`, `.page` — eliminates layout shift from scrollbar appearing/disappearing during hydration
+- Uses `scrollbar-width: none` (Firefox), `-ms-overflow-style: none` (IE/Edge), `::-webkit-scrollbar { display: none }` (Chrome/Safari)
+- Scroll still works via `html { overflow-y: auto }`
+
+**Files modified:** 7 files (`app/api/feed/route.ts`, `app/feed/page.tsx`, `app/kid-dashboard/page.tsx`, `app/kid-dashboard/progress/page.tsx`, `app/page.tsx`, `app/globals.css`, `docs/DOCS.md`)
+**Resolved issues:** R44–R50
 
 ### v2.5.0 — 2026-03-06 (Desktop Fixes, Game Fixes, Detection, Report Accuracy, UI Polish)
 
