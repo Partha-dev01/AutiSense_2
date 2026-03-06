@@ -7,6 +7,7 @@ import NavLogo from "../components/NavLogo";
 import ThemeToggle from "../components/ThemeToggle";
 import UserMenu from "../components/UserMenu";
 import { Plus, X, Send, Trash2 } from "lucide-react";
+import BottomNav from "../components/BottomNav";
 
 type Category = "all" | "tip" | "milestone" | "question" | "resource";
 
@@ -557,6 +558,8 @@ export default function FeedPage() {
           <Plus size={26} strokeWidth={2.5} />
         </button>
       )}
+
+      <BottomNav />
     </div>
   );
 }
