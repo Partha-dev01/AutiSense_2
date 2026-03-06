@@ -3,21 +3,26 @@ import { AUTH_CONFIG } from "@/app/lib/auth/config";
 import { getAuthSession, getUserById } from "@/app/lib/auth/dynamodb";
 import { getAppCredentials, getAppRegion } from "@/app/lib/aws/credentials";
 
+/**
+ * Community Feed API — DynamoDB table: autisense-feed-posts
+ * Table schema: PK = postId (S), SK = createdAt (N)
+ */
+
 const TABLE = "autisense-feed-posts";
 
-// ─── In-memory fallback for local dev ────────────────────────────────
-interface MemoryPost {
-  id: string;
+interface FeedPostItem {
+  postId: string;
   userId: string;
   content: string;
   category: string;
   reactions: { heart: number; helpful: number; relate: number };
-  reactedBy: Record<string, string[]>; // { "heart": [userId1, ...], ... }
+  reactedBy: Record<string, string[]>;
   createdAt: number;
   anonymous: boolean;
 }
 
-const memoryPosts: MemoryPost[] = [];
+// ─── In-memory fallback for local dev ────────────────────────────────
+const memoryPosts: FeedPostItem[] = [];
 
 // ─── DynamoDB client ─────────────────────────────────────────────────
 let dynamoFailed = false;
@@ -71,11 +76,11 @@ export async function GET(request: NextRequest) {
       const result = await docClient.send(
         new ScanCommand({ TableName: TABLE, Limit: 200 }),
       );
-      let posts = (result.Items || []) as MemoryPost[];
+      let posts = (result.Items || []) as FeedPostItem[];
       if (category) posts = posts.filter((p) => p.category === category);
       posts.sort((a, b) => b.createdAt - a.createdAt);
       return NextResponse.json({
-        posts: posts.slice(0, limit).map(sanitizePost),
+        posts: posts.slice(0, limit).map(toClient),
         source: "dynamodb",
       });
     } catch (err) {
@@ -89,7 +94,7 @@ export async function GET(request: NextRequest) {
   if (category) posts = posts.filter((p) => p.category === category);
   posts.sort((a, b) => b.createdAt - a.createdAt);
   return NextResponse.json({
-    posts: posts.slice(0, limit).map(sanitizePost),
+    posts: posts.slice(0, limit).map(toClient),
     source: "memory",
   });
 }
@@ -124,14 +129,15 @@ async function handleCreate(body: Record<string, unknown>, userId: string) {
     return NextResponse.json({ error: "Invalid category" }, { status: 400 });
   }
 
-  const post: MemoryPost = {
-    id: crypto.randomUUID(),
+  const now = Date.now();
+  const post: FeedPostItem = {
+    postId: crypto.randomUUID(),
     userId,
     content: (content as string).trim(),
     category: category as string,
     reactions: { heart: 0, helpful: 0, relate: 0 },
     reactedBy: { heart: [], helpful: [], relate: [] },
-    createdAt: Date.now(),
+    createdAt: now,
     anonymous: anonymous !== false,
   };
 
@@ -140,7 +146,7 @@ async function handleCreate(body: Record<string, unknown>, userId: string) {
       const docClient = await getDynamo();
       const { PutCommand } = await import("@aws-sdk/lib-dynamodb");
       await docClient.send(new PutCommand({ TableName: TABLE, Item: post }));
-      return NextResponse.json({ success: true, post: sanitizePost(post), source: "dynamodb" });
+      return NextResponse.json({ success: true, post: toClient(post), source: "dynamodb" });
     } catch (err) {
       console.error("[feed] DynamoDB PUT failed, falling back:", err);
       dynamoFailed = true;
@@ -148,26 +154,27 @@ async function handleCreate(body: Record<string, unknown>, userId: string) {
   }
 
   memoryPosts.push(post);
-  return NextResponse.json({ success: true, post: sanitizePost(post), source: "memory" });
+  return NextResponse.json({ success: true, post: toClient(post), source: "memory" });
 }
 
 // ─── React to a post ─────────────────────────────────────────────────
 async function handleReaction(body: Record<string, unknown>, userId: string) {
-  const { postId, type } = body;
-  if (!postId || !["heart", "helpful", "relate"].includes(type as string)) {
-    return NextResponse.json({ error: "Invalid reaction" }, { status: 400 });
+  const { postId, createdAt, type } = body;
+  if (!postId || !createdAt || !["heart", "helpful", "relate"].includes(type as string)) {
+    return NextResponse.json({ error: "Invalid reaction — need postId, createdAt, type" }, { status: 400 });
   }
 
   const reactionType = type as "heart" | "helpful" | "relate";
+  const key = { postId: postId as string, createdAt: createdAt as number };
 
   if (shouldUseDynamo()) {
     try {
       const docClient = await getDynamo();
       const { GetCommand, UpdateCommand } = await import("@aws-sdk/lib-dynamodb");
       const result = await docClient.send(
-        new GetCommand({ TableName: TABLE, Key: { id: postId } }),
+        new GetCommand({ TableName: TABLE, Key: key }),
       );
-      const post = result.Item as MemoryPost | undefined;
+      const post = result.Item as FeedPostItem | undefined;
       if (!post) return NextResponse.json({ error: "Post not found" }, { status: 404 });
 
       const reactedBy = post.reactedBy || { heart: [], helpful: [], relate: [] };
@@ -175,12 +182,11 @@ async function handleReaction(body: Record<string, unknown>, userId: string) {
       const already = users.includes(userId);
 
       if (already) {
-        // Remove reaction
         const newUsers = users.filter((u: string) => u !== userId);
         await docClient.send(
           new UpdateCommand({
             TableName: TABLE,
-            Key: { id: postId },
+            Key: key,
             UpdateExpression: "SET reactions.#t = reactions.#t - :one, reactedBy.#t = :users",
             ExpressionAttributeNames: { "#t": reactionType },
             ExpressionAttributeValues: { ":one": 1, ":users": newUsers },
@@ -188,11 +194,10 @@ async function handleReaction(body: Record<string, unknown>, userId: string) {
         );
         return NextResponse.json({ toggled: false });
       } else {
-        // Add reaction
         await docClient.send(
           new UpdateCommand({
             TableName: TABLE,
-            Key: { id: postId },
+            Key: key,
             UpdateExpression: "SET reactions.#t = reactions.#t + :one, reactedBy.#t = list_append(if_not_exists(reactedBy.#t, :empty), :user)",
             ExpressionAttributeNames: { "#t": reactionType },
             ExpressionAttributeValues: { ":one": 1, ":user": [userId], ":empty": [] },
@@ -207,7 +212,7 @@ async function handleReaction(body: Record<string, unknown>, userId: string) {
   }
 
   // In-memory fallback
-  const post = memoryPosts.find((p) => p.id === postId);
+  const post = memoryPosts.find((p) => p.postId === (postId as string));
   if (!post) return NextResponse.json({ error: "Post not found" }, { status: 404 });
 
   if (!post.reactedBy) post.reactedBy = { heart: [], helpful: [], relate: [] };
@@ -226,21 +231,25 @@ async function handleReaction(body: Record<string, unknown>, userId: string) {
 
 // ─── Delete post ─────────────────────────────────────────────────────
 async function handleDelete(body: Record<string, unknown>, userId: string) {
-  const { postId } = body;
-  if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
+  const { postId, createdAt } = body;
+  if (!postId || !createdAt) {
+    return NextResponse.json({ error: "postId and createdAt required" }, { status: 400 });
+  }
+
+  const key = { postId: postId as string, createdAt: createdAt as number };
 
   if (shouldUseDynamo()) {
     try {
       const docClient = await getDynamo();
       const { GetCommand, DeleteCommand } = await import("@aws-sdk/lib-dynamodb");
       const result = await docClient.send(
-        new GetCommand({ TableName: TABLE, Key: { id: postId } }),
+        new GetCommand({ TableName: TABLE, Key: key }),
       );
-      const post = result.Item as MemoryPost | undefined;
+      const post = result.Item as FeedPostItem | undefined;
       if (!post || post.userId !== userId) {
         return NextResponse.json({ error: "Not found or not authorized" }, { status: 403 });
       }
-      await docClient.send(new DeleteCommand({ TableName: TABLE, Key: { id: postId } }));
+      await docClient.send(new DeleteCommand({ TableName: TABLE, Key: key }));
       return NextResponse.json({ success: true });
     } catch (err) {
       console.error("[feed] DynamoDB delete failed, falling back:", err);
@@ -248,16 +257,17 @@ async function handleDelete(body: Record<string, unknown>, userId: string) {
     }
   }
 
-  const idx = memoryPosts.findIndex((p) => p.id === postId && p.userId === userId);
+  const idx = memoryPosts.findIndex((p) => p.postId === (postId as string) && p.userId === userId);
   if (idx === -1) return NextResponse.json({ error: "Not found or not authorized" }, { status: 403 });
   memoryPosts.splice(idx, 1);
   return NextResponse.json({ success: true });
 }
 
-// ─── Sanitize post for client (strip reactedBy, expose user's reactions) ─
-function sanitizePost(post: MemoryPost) {
+// ─── Map DynamoDB item to client format ──────────────────────────────
+function toClient(post: FeedPostItem) {
   return {
-    id: post.id,
+    id: post.postId,
+    postId: post.postId,
     userId: post.userId,
     content: post.content,
     category: post.category,

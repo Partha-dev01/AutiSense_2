@@ -642,6 +642,8 @@ npx playwright test    # Run all 30 tests
 | R44 | **Community feed local-only — posts not shared across users** | Feed used IndexedDB (Dexie) for posts and reactions — each user only saw their own posts. Fix: implemented DynamoDB-backed `/api/feed` API route with full CRUD (create, list, react, delete). Feed page now calls server API instead of IndexedDB. Reaction tracking stored per-post in `reactedBy` map. In-memory fallback for local dev. DynamoDB table: `autisense-feed-posts` (PK: `id`). `app/api/feed/route.ts`, `app/feed/page.tsx` |
 | R45 | **Dashboard shows duplicate "AI Chat" quick link** | Community quick link was changed to AI Chat in v2.5.0, but AI Chat already existed — creating two identical entries. Fix: restored Community link pointing to `/feed`, kept single AI Chat entry. `app/kid-dashboard/page.tsx` |
 | R46 | **Landing page community links pointed to chat** | v2.5.0 redirected community links to `/kid-dashboard/chat`. Now that feed works cross-user, restored links to `/feed`. Updated CTA card and footer. `app/page.tsx` |
+| R47 | **Progress page showed duplicate game entries** | Multiple sessions of the same game appeared as separate rows. Fix: redesigned progress page to group sessions by game — one expandable card per game showing avg score, best score, and session count. Click chevron to expand dropdown with individual session details (time, duration, score). Groups sorted by most recently played. Applied to both Today and This Week tabs. `app/kid-dashboard/progress/page.tsx` |
+| R48 | **Feed API used wrong DynamoDB key schema** | API route used `{ id }` as key but the existing `autisense-feed-posts` table uses composite key `{ postId (S), createdAt (N) }`. Fix: updated all DynamoDB operations (Put, Get, Update, Delete) to use correct composite key. Feed page sends both `postId` and `createdAt` for reactions and deletes. `app/api/feed/route.ts`, `app/feed/page.tsx` |
 
 ---
 
@@ -1088,8 +1090,18 @@ A complete kids-facing dashboard with bottom tab navigation, daily games, AI cha
 - Fixed duplicate "AI Chat" in dashboard quick links — restored Community link to `/feed`
 - Restored landing page CTA and footer links to `/feed` (was redirected to chat in v2.5.0)
 
-**Files modified:** 4 files (`app/api/feed/route.ts`, `app/feed/page.tsx`, `app/kid-dashboard/page.tsx`, `app/page.tsx`)
-**Resolved issues:** R44–R46
+**Progress Page Redesign:**
+- Replaced flat list with per-game grouped cards — one card per game with avg score, best score, session count
+- Expandable dropdown (chevron) shows individual session details: time, duration, score bar
+- Groups sorted by most recently played game
+- Applied to both Today and This Week tabs
+
+**Feed API Fix:**
+- Fixed DynamoDB key schema mismatch: table uses `{ postId, createdAt }` composite key, not `{ id }`
+- Updated all CRUD operations and client calls to use correct composite key
+
+**Files modified:** 6 files (`app/api/feed/route.ts`, `app/feed/page.tsx`, `app/kid-dashboard/page.tsx`, `app/kid-dashboard/progress/page.tsx`, `app/page.tsx`, `docs/DOCS.md`)
+**Resolved issues:** R44–R48
 
 ### v2.5.0 — 2026-03-06 (Desktop Fixes, Game Fixes, Detection, Report Accuracy, UI Polish)
 

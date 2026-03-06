@@ -8,6 +8,7 @@ import { getStreak } from "../../lib/db/streak.repository";
 import type { GameActivity } from "../../types/gameActivity";
 import NavLogo from "../../components/NavLogo";
 import ThemeToggle from "../../components/ThemeToggle";
+import { ChevronDown } from "lucide-react";
 
 type Tab = "today" | "week" | "alltime";
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -31,7 +32,7 @@ function dateStr(off: number): string {
 }
 
 function monOff(): number {
-  const day = new Date().getDay(); // 0=Sun, 1=Mon ... 6=Sat
+  const day = new Date().getDay();
   return day === 0 ? -6 : 1 - day;
 }
 
@@ -45,16 +46,38 @@ function gameName(id: string): string {
   return id.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** Keep only the best score per game per day */
-function dedup(acts: GameActivity[]): GameActivity[] {
-  const best = new Map<string, GameActivity>();
+/** Group activities by gameId. Each group sorted by most recent first. Groups sorted by most recent session. */
+interface GameGroup {
+  gameId: string;
+  sessions: GameActivity[];
+  bestScore: number;
+  avgScore: number;
+  totalTime: number;
+  lastPlayed: number;
+}
+
+function groupByGame(acts: GameActivity[]): GameGroup[] {
+  const map = new Map<string, GameActivity[]>();
   for (const a of acts) {
-    const day = new Date(a.completedAt).toDateString();
-    const key = `${a.gameId}:${day}`;
-    const prev = best.get(key);
-    if (!prev || a.score > prev.score) best.set(key, a);
+    const arr = map.get(a.gameId) || [];
+    arr.push(a);
+    map.set(a.gameId, arr);
   }
-  return Array.from(best.values()).sort((a, b) => b.completedAt - a.completedAt);
+  const groups: GameGroup[] = [];
+  for (const [gameId, sessions] of map) {
+    sessions.sort((a, b) => b.completedAt - a.completedAt);
+    const scores = sessions.map((s) => s.score);
+    groups.push({
+      gameId,
+      sessions,
+      bestScore: Math.max(...scores),
+      avgScore: Math.round(scores.reduce((s, v) => s + v, 0) / scores.length),
+      totalTime: sessions.reduce((s, a) => s + a.duration, 0),
+      lastPlayed: sessions[0].completedAt,
+    });
+  }
+  groups.sort((a, b) => b.lastPlayed - a.lastPlayed);
+  return groups;
 }
 
 const sc: React.CSSProperties = {
@@ -78,6 +101,97 @@ function ScoreBar({ score }: { score: number }) {
   return (
     <div style={{ flex: 1, height: 8, borderRadius: 4, background: "var(--sage-100)", overflow: "hidden" }}>
       <div style={{ width: `${score}%`, height: "100%", borderRadius: 4, background: scColor(score), transition: "width 400ms var(--ease)" }} />
+    </div>
+  );
+}
+
+function GameCard({ group }: { group: GameGroup }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div style={{ ...sc, textAlign: "left", padding: 0, overflow: "hidden" }}>
+      {/* Header — always visible, clickable */}
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: "100%",
+          padding: "14px 18px",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          textAlign: "left",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <span style={{ fontFamily: fredoka, fontWeight: 600, fontSize: "0.95rem", color: "var(--text-primary)" }}>
+              {gameName(group.gameId)}
+            </span>
+            <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+              {group.sessions.length} session{group.sessions.length !== 1 ? "s" : ""} &middot; Best: {group.bestScore}%
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <ScoreBar score={group.avgScore} />
+            <span style={{ fontSize: "0.8rem", fontWeight: 700, color: scColor(group.avgScore), minWidth: 36, textAlign: "right" }}>
+              {group.avgScore}%
+            </span>
+          </div>
+        </div>
+        <ChevronDown
+          size={18}
+          style={{
+            color: "var(--text-secondary)",
+            transition: "transform 200ms var(--ease)",
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+            flexShrink: 0,
+          }}
+        />
+      </button>
+
+      {/* Dropdown — individual sessions */}
+      {open && (
+        <div style={{ borderTop: "1px solid var(--border)", padding: "10px 18px 14px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {group.sessions.map((act, i) => (
+              <div
+                key={act.id ?? i}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "8px 12px",
+                  borderRadius: "var(--r-md)",
+                  background: "var(--sage-50)",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)" }}>
+                      {fmtTime(act.completedAt)}
+                    </span>
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                      {fmtDur(act.duration)}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <ScoreBar score={act.score} />
+                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: scColor(act.score), minWidth: 30, textAlign: "right" }}>
+                      {act.score}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 10, fontSize: "0.75rem", color: "var(--text-muted)", textAlign: "center" }}>
+            Total time: {fmtDur(group.totalTime)}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -109,19 +223,21 @@ export default function ProgressPage() {
   }, []);
 
   const loadToday = useCallback(async () => {
-    const acts = dedup(await getTodayActivity(childId));
-    setTodayActs(acts);
+    setTodayActs(await getTodayActivity(childId));
   }, [childId]);
 
   const loadWeek = useCallback(async () => {
     const mo = monOff();
-    const acts = dedup(await getActivityRange(childId, dateStr(mo), dateStr(mo + 6)));
+    const acts = await getActivityRange(childId, dateStr(mo), dateStr(mo + 6));
     setWeekActs(acts);
     const counts = [0, 0, 0, 0, 0, 0, 0];
+    // Count unique games per day
+    const seen = new Set<string>();
     acts.forEach((a) => {
       const dayOfWeek = new Date(a.date + "T00:00:00").getDay();
-      const idx = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Mon=0 ... Sun=6
-      counts[idx]++;
+      const idx = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const key = `${a.gameId}:${idx}`;
+      if (!seen.has(key)) { seen.add(key); counts[idx]++; }
     });
     setWeekDayCounts(counts);
   }, [childId]);
@@ -148,23 +264,14 @@ export default function ProgressPage() {
     else loadAllTime();
   }, [isAuthenticated, tab, loadToday, loadWeek, loadAllTime]);
 
-  // Derived
+  // Derived — grouped
+  const todayGroups = groupByGame(todayActs);
+  const weekGroups = groupByGame(weekActs);
+
   const todayAvg = todayActs.length ? Math.round(todayActs.reduce((s, a) => s + a.score, 0) / todayActs.length) : 0;
   const todayTime = todayActs.reduce((s, a) => s + a.duration, 0);
   const weekAvg = weekActs.length ? Math.round(weekActs.reduce((s, a) => s + a.score, 0) / weekActs.length) : 0;
 
-  // Per-game breakdown for the week tab
-  const gameScores: Record<string, { total: number; count: number }> = {};
-  weekActs.forEach((a) => {
-    if (!gameScores[a.gameId]) gameScores[a.gameId] = { total: 0, count: 0 };
-    gameScores[a.gameId].total += a.score;
-    gameScores[a.gameId].count++;
-  });
-  const gameBk = Object.entries(gameScores)
-    .map(([id, v]) => ({ gameId: id, avg: Math.round(v.total / v.count), count: v.count }))
-    .sort((a, b) => b.count - a.count);
-
-  // Favorite game (most played across recent weeks)
   const allCounts: Record<string, number> = {};
   weekActs.concat(lwActs).forEach((a) => {
     allCounts[a.gameId] = (allCounts[a.gameId] || 0) + 1;
@@ -216,11 +323,11 @@ export default function ProgressPage() {
         {tab === "today" && (
           <div className="fade fade-2">
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 24 }}>
-              <Stat value={todayActs.length} label="Games Played" />
+              <Stat value={todayGroups.length} label="Games Played" />
               <Stat value={`${todayAvg}%`} label="Avg Score" />
               <Stat value={fmtDur(todayTime)} label="Time Spent" />
             </div>
-            {todayActs.length === 0 ? (
+            {todayGroups.length === 0 ? (
               <div style={{ ...sc, padding: "36px 24px", textAlign: "center" }}>
                 <div style={{ fontSize: "1.1rem", fontFamily: fredoka, fontWeight: 600, color: "var(--text-primary)", marginBottom: 8 }}>No games played today</div>
                 <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", margin: "0 0 16px" }}>Let&apos;s play!</p>
@@ -232,17 +339,8 @@ export default function ProgressPage() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <h3 style={heading}>Today&apos;s Games</h3>
-                {todayActs.map((act, i) => (
-                  <div key={act.id ?? i} style={{ ...sc, textAlign: "left", padding: "14px 18px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <span style={{ fontFamily: fredoka, fontWeight: 600, fontSize: "0.9rem", color: "var(--text-primary)" }}>{gameName(act.gameId)}</span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{fmtTime(act.completedAt)} &middot; {fmtDur(act.duration)}</span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <ScoreBar score={act.score} />
-                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: scColor(act.score), minWidth: 36, textAlign: "right" }}>{act.score}%</span>
-                    </div>
-                  </div>
+                {todayGroups.map((group) => (
+                  <GameCard key={group.gameId} group={group} />
                 ))}
               </div>
             )}
@@ -269,25 +367,16 @@ export default function ProgressPage() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
               <Stat value={`${weekAvg}%`} label="Avg Score" />
-              <Stat value={weekActs.length} label="Total Games" />
+              <Stat value={weekGroups.length} label="Games Played" />
             </div>
-            {gameBk.length > 0 && (
-              <div style={{ ...sc, textAlign: "left", padding: "18px 20px" }}>
-                <h3 style={heading}>Per-Game Scores</h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {gameBk.map(g => (
-                    <div key={g.gameId}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                        <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-primary)" }}>{gameName(g.gameId)}</span>
-                        <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>{g.avg}% avg ({g.count}x)</span>
-                      </div>
-                      <ScoreBar score={g.avg} />
-                    </div>
-                  ))}
-                </div>
+            {weekGroups.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <h3 style={heading}>Per-Game Breakdown</h3>
+                {weekGroups.map((group) => (
+                  <GameCard key={group.gameId} group={group} />
+                ))}
               </div>
-            )}
-            {weekActs.length === 0 && (
+            ) : (
               <div style={{ ...sc, padding: "28px 24px", textAlign: "center" }}>
                 <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", margin: 0 }}>No games played this week yet. Start playing to see your progress!</p>
               </div>
@@ -299,7 +388,7 @@ export default function ProgressPage() {
         {tab === "alltime" && (
           <div className="fade fade-2">
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginBottom: 20 }}>
-              <Stat value={totalGames} label="Total Games" />
+              <Stat value={totalGames} label="Total Sessions" />
               <Stat value={bestStreak} label="Best Streak" />
               <Stat value={curStreak} label="Current Streak" />
               <div style={sc}>

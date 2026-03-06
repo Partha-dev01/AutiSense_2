@@ -12,6 +12,7 @@ type Category = "all" | "tip" | "milestone" | "question" | "resource";
 
 interface FeedPost {
   id: string;
+  postId: string;
   userId: string;
   content: string;
   category: "tip" | "milestone" | "question" | "resource";
@@ -120,12 +121,12 @@ export default function FeedPage() {
     }
   };
 
-  const handleReaction = async (postId: string, type: "heart" | "helpful" | "relate") => {
+  const handleReaction = async (post: FeedPost, type: "heart" | "helpful" | "relate") => {
     try {
       await fetch("/api/feed", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "react", postId, type }),
+        body: JSON.stringify({ action: "react", postId: post.postId, createdAt: post.createdAt, type }),
       });
       await loadPosts();
     } catch {
@@ -133,12 +134,12 @@ export default function FeedPage() {
     }
   };
 
-  const handleDelete = async (postId: string) => {
+  const handleDelete = async (post: FeedPost) => {
     try {
       await fetch("/api/feed", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "delete", postId }),
+        body: JSON.stringify({ action: "delete", postId: post.postId, createdAt: post.createdAt }),
       });
       await loadPosts();
     } catch {
@@ -462,7 +463,7 @@ export default function FeedPage() {
                       return (
                         <button
                           key={r.type}
-                          onClick={() => handleReaction(post.id, r.type)}
+                          onClick={() => handleReaction(post, r.type)}
                           style={{
                             background: reacted ? "var(--sage-100)" : "none",
                             border: reacted ? "1.5px solid var(--sage-300)" : "1.5px solid transparent",
@@ -489,7 +490,7 @@ export default function FeedPage() {
 
                   {post.userId === userId && (
                     <button
-                      onClick={() => handleDelete(post.id)}
+                      onClick={() => handleDelete(post)}
                       style={{
                         background: "none",
                         border: "none",
