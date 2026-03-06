@@ -253,54 +253,6 @@ export default function LandingPage() {
         )}
       </section>
 
-      {/* Quick Actions — only for authenticated users */}
-      {isAuthenticated && (
-        <section
-          style={{
-            padding: "0 28px 40px",
-            maxWidth: 700,
-            margin: "0 auto",
-            width: "100%",
-          }}
-        >
-          <h2
-            style={{
-              fontFamily: "'Fredoka',sans-serif",
-              fontWeight: 600,
-              fontSize: "1.3rem",
-              textAlign: "center",
-              marginBottom: 20,
-              color: "var(--text-primary)",
-            }}
-          >
-            Your Platform
-          </h2>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
-              gap: 14,
-            }}
-          >
-            <Link href="/kid-dashboard" className="card" style={{ padding: "22px 18px", textDecoration: "none", textAlign: "center" }}>
-              <div style={{ fontSize: "1.8rem", marginBottom: 10 }}>{"\u{1F4CA}"}</div>
-              <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: 4 }}>Dashboard</div>
-              <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>Games, progress & reports</div>
-            </Link>
-            <Link href="/games" className="card" style={{ padding: "22px 18px", textDecoration: "none", textAlign: "center" }}>
-              <div style={{ fontSize: "1.8rem", marginBottom: 10 }}>{"\u{1F3AE}"}</div>
-              <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: 4 }}>Therapy Games</div>
-              <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>7 adaptive games</div>
-            </Link>
-            <Link href="/feed" className="card" style={{ padding: "22px 18px", textDecoration: "none", textAlign: "center" }}>
-              <div style={{ fontSize: "1.8rem", marginBottom: 10 }}>{"\u{1F465}"}</div>
-              <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: 4 }}>Community</div>
-              <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>Tips, milestones & support</div>
-            </Link>
-          </div>
-        </section>
-      )}
-
       {/* Three pillars section */}
       <section
         style={{
