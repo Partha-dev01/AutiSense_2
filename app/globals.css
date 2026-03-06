@@ -732,7 +732,7 @@ body {
 
 @media (max-width: 480px) {
   .nav {
-    padding: 16px 16px;
+    padding: 20px 16px;
     gap: 8px;
   }
   .logo {
@@ -781,7 +781,7 @@ body {
 /* ── Safe area for notched devices ── */
 @supports (padding-top: env(safe-area-inset-top)) {
   .nav {
-    padding-top: max(12px, env(safe-area-inset-top));
+    padding-top: max(20px, env(safe-area-inset-top));
     padding-left: max(20px, env(safe-area-inset-left));
     padding-right: max(20px, env(safe-area-inset-right));
   }
