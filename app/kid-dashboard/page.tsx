@@ -122,7 +122,7 @@ export default function KidDashboardPage() {
         </div>
       </nav>
 
-      <div className="main fade fade-1" style={{ maxWidth: 900, padding: "24px 20px 40px" }}>
+      <div className="main fade fade-1" style={{ maxWidth: 900, padding: "24px 20px 24px" }}>
         {/* Welcome */}
         <div className="fade fade-1" style={{ marginBottom: 20 }}>
           <h1

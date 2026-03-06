@@ -88,7 +88,7 @@ export default function LandingPage() {
         <span className="logo">
           Auti<em>Sense</em>
         </span>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
 
           {!loading && isAuthenticated ? (
@@ -96,7 +96,7 @@ export default function LandingPage() {
               <Link
                 href="/kid-dashboard"
                 className="btn btn-outline"
-                style={{ minHeight: 40, padding: "8px 16px", fontSize: "0.88rem" }}
+                style={{ minHeight: 36, padding: "6px 12px", fontSize: "0.82rem" }}
               >
                 Dashboard
               </Link>
@@ -107,14 +107,14 @@ export default function LandingPage() {
               <Link
                 href="/auth/login"
                 className="btn btn-outline"
-                style={{ minHeight: 40, padding: "8px 18px", fontSize: "0.88rem" }}
+                style={{ minHeight: 36, padding: "6px 12px", fontSize: "0.82rem" }}
               >
                 Sign In
               </Link>
               <Link
                 href="/intake/profile"
                 className="btn btn-primary"
-                style={{ minHeight: 44, padding: "10px 20px", fontSize: "0.92rem" }}
+                style={{ minHeight: 36, padding: "6px 14px", fontSize: "0.82rem" }}
               >
                 Start &rarr;
               </Link>
@@ -123,7 +123,7 @@ export default function LandingPage() {
             <Link
               href="/intake/profile"
               className="btn btn-primary"
-              style={{ minHeight: 44, padding: "10px 20px", fontSize: "0.92rem" }}
+              style={{ minHeight: 36, padding: "6px 14px", fontSize: "0.82rem" }}
             >
               Start &rarr;
             </Link>
