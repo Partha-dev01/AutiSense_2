@@ -22,7 +22,7 @@ export default function StreakBadge({ currentStreak, longestStreak }: StreakBadg
         padding: "16px 22px",
         borderRadius: "var(--r-lg)",
         background: currentStreak > 0
-          ? "linear-gradient(135deg, #fff7ed, #fef3c7)"
+          ? "linear-gradient(135deg, var(--feature-peach), var(--feature-green))"
           : "var(--bg-secondary)",
         border: "1px solid var(--border)",
       }}

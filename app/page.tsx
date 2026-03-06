@@ -8,13 +8,21 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
+import ThemeToggle from "./components/ThemeToggle";
+import UserMenu from "./components/UserMenu";
 
 export default function LandingPage() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const { user, loading, isAuthenticated, logout } = useAuth();
 
   useEffect(() => {
+    const saved = (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
+    setTheme(saved as "light" | "dark");
+  }, []);
+
+  useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
+    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
   }, [theme]);
 
   const features = [
@@ -80,19 +88,8 @@ export default function LandingPage() {
         <span className="logo">
           Auti<em>Sense</em>
         </span>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button
-            onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-            className="btn btn-outline"
-            style={{
-              minHeight: 40,
-              padding: "8px 14px",
-              fontSize: "0.88rem",
-            }}
-            aria-label="Toggle theme"
-          >
-            {theme === "light" ? "\u{1F319}" : "\u{2600}\u{FE0F}"}
-          </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
 
           {!loading && isAuthenticated ? (
             <>
@@ -103,21 +100,7 @@ export default function LandingPage() {
               >
                 Dashboard
               </Link>
-              <div className="user-chip">
-                <div className="avatar">
-                  {user?.name?.charAt(0)?.toUpperCase() || "U"}
-                </div>
-                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)" }}>
-                  {user?.name?.split(" ")[0] || "User"}
-                </span>
-              </div>
-              <button
-                onClick={() => logout()}
-                className="btn btn-outline"
-                style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem", color: "var(--text-muted)" }}
-              >
-                Sign Out
-              </button>
+              <UserMenu />
             </>
           ) : !loading ? (
             <>

@@ -142,6 +142,7 @@ body {
   flex-direction: column;
   background: var(--bg);
   position: relative;
+  overflow-x: hidden;
 }
 
 .page::before {

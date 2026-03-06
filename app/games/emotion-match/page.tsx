@@ -6,6 +6,7 @@ import { getDifficulty, saveDifficulty } from "../../lib/games/difficultyEngine"
 import { addGameActivity } from "../../lib/db/gameActivity.repository";
 import { updateStreak } from "../../lib/db/streak.repository";
 import NavLogo from "../../components/NavLogo";
+import ThemeToggle from "../../components/ThemeToggle";
 
 const fredoka = "'Fredoka',sans-serif";
 
@@ -188,14 +189,7 @@ export default function EmotionQuizPage() {
     <div className="page">
       <nav className="nav">
         <NavLogo />
-        <button
-          onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-          className="btn btn-outline"
-          style={{ minHeight: 40, padding: "8px 16px", fontSize: "0.9rem" }}
-          aria-label="Toggle theme"
-        >
-          {theme === "light" ? "Dark" : "Light"}
-        </button>
+        <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
       </nav>
 
       <div className="main fade fade-1" style={{ maxWidth: 600, padding: "40px 28px 80px" }}>

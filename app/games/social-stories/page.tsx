@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { getDifficulty, saveDifficulty } from "../../lib/games/difficultyEngine";
 import NavLogo from "../../components/NavLogo";
+import ThemeToggle from "../../components/ThemeToggle";
 
 type Screen = "start" | "play" | "result";
 
@@ -294,14 +295,7 @@ export default function SocialStoriesPage() {
     <div className="page">
       <nav className="nav">
         <NavLogo />
-        <button
-          onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-          className="btn btn-outline"
-          style={{ minHeight: 40, padding: "8px 16px", fontSize: "0.9rem" }}
-          aria-label="Toggle theme"
-        >
-          {theme === "light" ? "Dark" : "Light"}
-        </button>
+        <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
       </nav>
 
       <div className="main fade fade-1" style={{ maxWidth: 620, padding: "40px 28px 80px" }}>

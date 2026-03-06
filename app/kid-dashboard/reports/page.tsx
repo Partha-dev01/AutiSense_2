@@ -6,6 +6,7 @@ import { useAuthGuard } from "../../hooks/useAuthGuard";
 import type { WeeklyReport } from "../../types/gameActivity";
 import { db } from "../../lib/db/schema";
 import NavLogo from "../../components/NavLogo";
+import ThemeToggle from "../../components/ThemeToggle";
 
 type View = "kid" | "parent";
 
@@ -95,13 +96,7 @@ export default function ReportsPage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button
-            onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-            className="btn btn-outline"
-            style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem" }}
-          >
-            {theme === "light" ? "Dark" : "Light"}
-          </button>
+          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
           <Link href="/kid-dashboard" className="btn btn-outline" style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem" }}>
             Home
           </Link>

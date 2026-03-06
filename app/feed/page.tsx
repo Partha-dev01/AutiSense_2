@@ -7,6 +7,8 @@ import { getCurrentUserId } from "../lib/identity/identity";
 import { useAuthGuard } from "../hooks/useAuthGuard";
 import type { FeedPost } from "../types/feedPost";
 import NavLogo from "../components/NavLogo";
+import ThemeToggle from "../components/ThemeToggle";
+import UserMenu from "../components/UserMenu";
 import { Plus, X, Send, Trash2 } from "lucide-react";
 
 type Category = "all" | FeedPost["category"];
@@ -43,6 +45,7 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState("");
   const [showCompose, setShowCompose] = useState(false);
+  const [anonymous, setAnonymous] = useState(true);
   const [userReactions, setUserReactions] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -87,7 +90,7 @@ export default function FeedPage() {
     if (!content.trim() || posting) return;
     setPosting(true);
     try {
-      await createPost(content.trim(), category, true);
+      await createPost(content.trim(), category, anonymous);
       setContent("");
       setShowCompose(false);
       await loadPosts();
@@ -143,15 +146,8 @@ export default function FeedPage() {
       {/* Nav */}
       <nav className="nav">
         <NavLogo />
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button
-            onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-            className="btn btn-outline"
-            style={{ minHeight: 40, padding: "8px 16px", fontSize: "0.9rem" }}
-            aria-label="Toggle theme"
-          >
-            {theme === "light" ? "Dark" : "Light"}
-          </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
           <Link
             href="/kid-dashboard"
             className="btn btn-outline"
@@ -159,6 +155,7 @@ export default function FeedPage() {
           >
             Dashboard
           </Link>
+          <UserMenu />
         </div>
       </nav>
 
@@ -252,22 +249,37 @@ export default function FeedPage() {
               ))}
             </div>
 
-            <button
-              onClick={handlePost}
-              disabled={!content.trim() || posting}
-              className="btn btn-primary"
-              style={{
-                minHeight: 44,
-                padding: "10px 24px",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: "0.88rem",
-              }}
-            >
-              <Send size={16} />
-              {posting ? "Posting..." : "Post Anonymously"}
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+              <label style={{
+                display: "flex", alignItems: "center", gap: 8, cursor: "pointer",
+                fontSize: "0.85rem", fontWeight: 600, color: "var(--text-secondary)",
+              }}>
+                <input
+                  type="checkbox"
+                  checked={anonymous}
+                  onChange={(e) => setAnonymous(e.target.checked)}
+                  style={{ width: 18, height: 18, accentColor: "var(--sage-500)" }}
+                />
+                Post Anonymously
+              </label>
+
+              <button
+                onClick={handlePost}
+                disabled={!content.trim() || posting}
+                className="btn btn-primary"
+                style={{
+                  minHeight: 44,
+                  padding: "10px 24px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: "0.88rem",
+                }}
+              >
+                <Send size={16} />
+                {posting ? "Posting..." : anonymous ? "Post Anonymously" : "Post as Me"}
+              </button>
+            </div>
           </div>
         )}
 
@@ -369,7 +381,7 @@ export default function FeedPage() {
                           color: "var(--text-primary)",
                         }}
                       >
-                        {post.anonymous ? "Anonymous" : "User"}
+                        {post.anonymous ? "Anonymous" : "Community Member"}
                       </span>
                       <span
                         style={{

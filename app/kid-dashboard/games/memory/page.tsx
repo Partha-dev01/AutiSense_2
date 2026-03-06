@@ -6,6 +6,7 @@ import { getDifficulty, saveDifficulty } from "../../../lib/games/difficultyEngi
 import { addGameActivity } from "../../../lib/db/gameActivity.repository";
 import { updateStreak } from "../../../lib/db/streak.repository";
 import NavLogo from "../../../components/NavLogo";
+import ThemeToggle from "../../../components/ThemeToggle";
 
 type Screen = "start" | "play" | "result";
 
@@ -209,14 +210,7 @@ export default function MemoryGamePage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button
-            onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-            className="btn btn-outline"
-            style={{ minHeight: 40, padding: "8px 16px", fontSize: "0.9rem" }}
-            aria-label="Toggle theme"
-          >
-            {theme === "light" ? "Dark" : "Light"}
-          </button>
+          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
           <Link href="/kid-dashboard/games" className="btn btn-outline" style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem" }}>
             ← Games
           </Link>

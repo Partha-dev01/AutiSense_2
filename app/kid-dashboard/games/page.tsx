@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuthGuard } from "../../hooks/useAuthGuard";
 import NavLogo from "../../components/NavLogo";
+import ThemeToggle from "../../components/ThemeToggle";
 
 const games = [
   { id: "bubble-pop", emoji: "🫧", title: "Bubble Pop", description: "Pop the right bubbles as they float up! Builds focus and reaction speed.", color: "var(--feature-blue)", isNew: true },
@@ -143,13 +144,7 @@ export default function KidGamesHubPage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button
-            onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-            className="btn btn-outline"
-            style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem" }}
-          >
-            {theme === "light" ? "Dark" : "Light"}
-          </button>
+          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
           <Link href="/kid-dashboard" className="btn btn-outline" style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem" }}>
             Home
           </Link>

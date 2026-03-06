@@ -24,6 +24,22 @@ import ThemeToggle from "../../components/ThemeToggle";
 type Screen = "start" | "play" | "result";
 
 const FALLBACK_WORDS = ["apple", "banana", "cat", "dog", "fish", "happy", "hello", "sun", "tree", "water"];
+const FALLBACK_SENTENCES = [
+  "The cat sat", "I like to play", "The sun is bright",
+  "A big red bus", "I can run fast", "She has a hat",
+];
+
+function getSpeechStage(idx: number): number {
+  if (idx < 3) return 1;
+  if (idx < 6) return 2;
+  return 3;
+}
+
+const STAGE_LABELS: Record<number, string> = {
+  1: "Stage 1: Say the Word",
+  2: "Stage 2: Say the Phrase",
+  3: "Stage 3: Say the Sentence",
+};
 
 const statStyle = {
   fontSize: "1.8rem", fontFamily: "'Fredoka',sans-serif" as const,
@@ -104,9 +120,16 @@ export default function SpeechPracticePage() {
     const childId =
       (typeof window !== "undefined" && localStorage.getItem("autisense-active-child-id")) || "default";
     const config = getDifficulty("speech-practice", childId);
-    const fetched = await fetchWords(config.itemCount);
+    // Ensure at least 9 items for 3 stages
+    const itemCount = Math.max(9, config.itemCount);
+    const fetched = await fetchWords(itemCount);
 
-    setWords(fetched);
+    // Build staged items: words for stages 1-2 (indices 0-5), sentences for stage 3 (indices 6-8)
+    const stageWords = fetched.slice(0, 6);
+    const sentences = shuffle([...FALLBACK_SENTENCES]).slice(0, 3);
+    const allItems = [...stageWords, ...sentences];
+
+    setWords(allItems);
     setWordIdx(0);
     setScore(0);
     setStartTime(Date.now());
@@ -251,22 +274,55 @@ export default function SpeechPracticePage() {
         {screen === "play" && (
           <div className="fade fade-2" style={{ textAlign: "center" }}>
             <div style={{
-              display: "flex", justifyContent: "space-between", marginBottom: 12,
+              display: "flex", justifyContent: "space-between", marginBottom: 8,
               fontSize: "0.9rem", color: "var(--text-secondary)", fontWeight: 600,
             }}>
-              <span>Word {wordIdx + 1} of {words.length}</span>
+              <span>Item {wordIdx + 1} of {words.length}</span>
               <span>Score: {score}</span>
               <span>{Math.floor(elapsed / 1000)}s</span>
             </div>
 
+            {/* Stage label */}
             <div style={{
-              fontFamily: "'Fredoka',sans-serif", fontSize: "3rem", fontWeight: 700,
-              color: "var(--sage-500)", padding: "36px 20px", marginBottom: 20,
-              background: "var(--sage-50)", borderRadius: "var(--r-lg)",
-              border: "2px solid var(--sage-200)", letterSpacing: "0.04em",
+              fontSize: "0.82rem", fontWeight: 700, color: "var(--sage-500)",
+              marginBottom: 12, textTransform: "uppercase" as const, letterSpacing: "0.05em",
             }}>
-              {currentWord}
+              {STAGE_LABELS[getSpeechStage(wordIdx)]}
             </div>
+
+            {/* Stage 2: show 3 words in a phrase with current highlighted */}
+            {getSpeechStage(wordIdx) === 2 ? (
+              <div style={{
+                fontFamily: "'Fredoka',sans-serif", padding: "36px 20px", marginBottom: 20,
+                background: "var(--sage-50)", borderRadius: "var(--r-lg)",
+                border: "2px solid var(--sage-200)", display: "flex", gap: 16,
+                justifyContent: "center", flexWrap: "wrap",
+              }}>
+                {words.slice(3, 6).map((w, i) => (
+                  <span key={i} style={{
+                    fontSize: wordIdx === 3 + i ? "2.4rem" : "1.6rem",
+                    fontWeight: 700, letterSpacing: "0.04em",
+                    color: wordIdx === 3 + i ? "var(--sage-500)" : "var(--text-muted)",
+                    opacity: wordIdx === 3 + i ? 1 : 0.5,
+                    transition: "all 300ms var(--ease)",
+                    textDecoration: i < (wordIdx - 3) ? "line-through" : "none",
+                  }}>
+                    {w}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div style={{
+                fontFamily: "'Fredoka',sans-serif",
+                fontSize: getSpeechStage(wordIdx) === 3 ? "2rem" : "3rem",
+                fontWeight: 700,
+                color: "var(--sage-500)", padding: "36px 20px", marginBottom: 20,
+                background: "var(--sage-50)", borderRadius: "var(--r-lg)",
+                border: "2px solid var(--sage-200)", letterSpacing: "0.04em",
+              }}>
+                {currentWord}
+              </div>
+            )}
 
             <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 20 }}>
               <button

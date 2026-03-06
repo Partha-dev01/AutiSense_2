@@ -6,6 +6,7 @@ import { getDifficulty, saveDifficulty } from "../../../lib/games/difficultyEngi
 import { addGameActivity } from "../../../lib/db/gameActivity.repository";
 import { updateStreak } from "../../../lib/db/streak.repository";
 import NavLogo from "../../../components/NavLogo";
+import ThemeToggle from "../../../components/ThemeToggle";
 
 type Screen = "start" | "play" | "result";
 
@@ -24,6 +25,11 @@ interface Round {
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
+const CVC_WORDS = [
+  "CAT", "DOG", "SUN", "HAT", "CUP", "RED", "BIG", "PEN", "BUS", "MOP",
+  "RUN", "SIT", "HOP", "FAN", "JAM", "NET", "PIN", "LOG", "DIG", "WET",
+];
+
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -33,12 +39,51 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-function generateRound(level: number): Round {
-  const skip = level <= 2 ? 1 : level <= 3 ? 2 : level === 4 ? 1 : 2;
-  const seqLen = level <= 2 ? 6 : level <= 4 ? 7 : 8;
-  const blankCount = level === 1 ? 2 : level === 2 ? 3 : level <= 4 ? 3 : 4;
+function getStage(roundIdx: number): number {
+  if (roundIdx < 2) return 1;
+  if (roundIdx < 4) return 2;
+  return 3;
+}
 
-  // Pick a random starting letter that leaves room for the sequence
+function generateLetterChoices(answer: string, count: number): string[] {
+  const distractors: string[] = [];
+  const answerIdx = ALPHABET.indexOf(answer);
+  const nearby = [answerIdx - 2, answerIdx - 1, answerIdx + 1, answerIdx + 2, answerIdx + 3]
+    .filter((i) => i >= 0 && i < 26 && ALPHABET[i] !== answer);
+  const shuffledNearby = shuffle(nearby);
+  for (const n of shuffledNearby) {
+    if (distractors.length < count) distractors.push(ALPHABET[n]);
+  }
+  while (distractors.length < count) {
+    const r = ALPHABET[Math.floor(Math.random() * 26)];
+    if (r !== answer && !distractors.includes(r)) distractors.push(r);
+  }
+  return shuffle([answer, ...distractors]);
+}
+
+function generateRound(level: number, stage: number): Round {
+  // Stage 3: Word completion (CVC words with 1 missing letter)
+  if (stage === 3) {
+    const word = CVC_WORDS[Math.floor(Math.random() * CVC_WORDS.length)];
+    const sequence = word.split("");
+    const blankPos = 1; // Always blank the middle vowel/consonant
+    const answer = sequence[blankPos];
+    return {
+      sequence,
+      blanks: [{
+        position: blankPos,
+        answer,
+        choices: generateLetterChoices(answer, 3),
+        userAnswer: null,
+        isCorrect: null,
+      }],
+    };
+  }
+
+  const blankCount = stage === 1 ? 1 : 2;
+  const skip = level <= 2 ? 1 : level <= 3 ? 2 : level === 4 ? 1 : 2;
+  const seqLen = stage === 1 ? 5 : level <= 2 ? 6 : level <= 4 ? 7 : 8;
+
   const maxStart = 26 - seqLen * skip;
   const startIdx = Math.floor(Math.random() * Math.max(1, maxStart));
 
@@ -48,30 +93,15 @@ function generateRound(level: number): Round {
     sequence.push(idx < 26 ? ALPHABET[idx] : ALPHABET[25]);
   }
 
-  // Pick blank positions (not first or last for friendliness)
   const candidates = Array.from({ length: seqLen - 2 }, (_, i) => i + 1);
   const blankPositions = shuffle(candidates).slice(0, Math.min(blankCount, candidates.length)).sort((a, b) => a - b);
 
   const blanks: BlankSlot[] = blankPositions.map((pos) => {
     const answer = sequence[pos];
-    // Build 4 choices: the correct one + 3 distractors
-    const distractors: string[] = [];
-    const answerIdx = ALPHABET.indexOf(answer);
-    const nearby = [answerIdx - 2, answerIdx - 1, answerIdx + 1, answerIdx + 2, answerIdx + 3]
-      .filter((i) => i >= 0 && i < 26 && ALPHABET[i] !== answer);
-    const shuffledNearby = shuffle(nearby);
-    for (const n of shuffledNearby) {
-      if (distractors.length < 3) distractors.push(ALPHABET[n]);
-    }
-    // Fill remaining if needed
-    while (distractors.length < 3) {
-      const r = ALPHABET[Math.floor(Math.random() * 26)];
-      if (r !== answer && !distractors.includes(r)) distractors.push(r);
-    }
     return {
       position: pos,
       answer,
-      choices: shuffle([answer, ...distractors]),
+      choices: generateLetterChoices(answer, 3),
       userAnswer: null,
       isCorrect: null,
     };
@@ -115,7 +145,8 @@ export default function AlphabetPatternPage() {
     const allRounds: Round[] = [];
     let blanksTotal = 0;
     for (let i = 0; i < config.itemCount; i++) {
-      const r = generateRound(config.level);
+      const stage = getStage(i);
+      const r = generateRound(config.level, stage);
       allRounds.push(r);
       blanksTotal += r.blanks.length;
     }
@@ -194,14 +225,7 @@ export default function AlphabetPatternPage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button
-            onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-            className="btn btn-outline"
-            style={{ minHeight: 40, padding: "8px 16px", fontSize: "0.9rem" }}
-            aria-label="Toggle theme"
-          >
-            {theme === "light" ? "Dark" : "Light"}
-          </button>
+          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
           <Link href="/kid-dashboard/games" className="btn btn-outline" style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem" }}>
             ← Games
           </Link>
@@ -267,6 +291,16 @@ export default function AlphabetPatternPage() {
               <span>{Math.floor(elapsed / 1000)}s</span>
             </div>
 
+            {/* Stage indicator */}
+            <div style={{
+              fontSize: "0.82rem", fontWeight: 700, color: "var(--sage-500)",
+              marginBottom: 8, textTransform: "uppercase" as const, letterSpacing: "0.05em",
+            }}>
+              {getStage(roundIndex) === 1 ? "Stage 1: Fill the Pattern" :
+               getStage(roundIndex) === 2 ? "Stage 2: More Blanks" :
+               "Stage 3: Complete the Word"}
+            </div>
+
             {/* Instruction */}
             <p
               style={{
@@ -276,7 +310,9 @@ export default function AlphabetPatternPage() {
                 fontWeight: 600,
               }}
             >
-              Fill in blank #{blankIndex + 1} of {currentRound.blanks.length}
+              {getStage(roundIndex) === 3
+                ? "What letter completes this word?"
+                : `Fill in blank #${blankIndex + 1} of ${currentRound.blanks.length}`}
             </p>
 
             {/* Sequence display */}

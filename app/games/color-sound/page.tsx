@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import { getDifficulty, saveDifficulty } from "../../lib/games/difficultyEngine";
 import { speakText } from "../../lib/audio/ttsHelper";
 import NavLogo from "../../components/NavLogo";
+import ThemeToggle from "../../components/ThemeToggle";
 
 type Screen = "start" | "play" | "result";
 
@@ -75,6 +76,7 @@ export default function ColorSoundPage() {
   const [elapsed, setElapsed] = useState(0);
   const [hintText, setHintText] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
+  const [attemptsThisRound, setAttemptsThisRound] = useState(0);
 
   useEffect(() => {
     const saved =
@@ -99,6 +101,7 @@ export default function ColorSoundPage() {
       setTargetColor(target);
       setSelectedIndex(null);
       setFeedback(null);
+      setAttemptsThisRound(0);
       setHintText(`Tap the ${target.name} color`);
 
       // Play tone + voice cue after a short delay
@@ -131,29 +134,48 @@ export default function ColorSoundPage() {
     return () => clearInterval(iv);
   }, [screen, startTime]);
 
+  const advanceRound = useCallback((wasCorrect: boolean) => {
+    const nextRound = round + 1;
+    if (nextRound > maxRounds) {
+      const score = Math.round(((correct + (wasCorrect ? 1 : 0)) / maxRounds) * 100);
+      saveDifficulty("color-sound", "default", score);
+      setScreen("result");
+    } else {
+      setRound(nextRound);
+      const config = getDifficulty("color-sound", "default");
+      generateRound(config.level);
+    }
+  }, [round, maxRounds, correct, generateRound]);
+
   const handleSelect = (index: number) => {
     if (feedback !== null || !targetColor) return;
 
     setSelectedIndex(index);
     const isCorrect = displayColors[index].name === targetColor.name;
-    setFeedback(isCorrect ? "correct" : "wrong");
-    if (isCorrect) setCorrect((c) => c + 1);
+    const attempt = attemptsThisRound + 1;
+    setAttemptsThisRound(attempt);
 
     // Play the selected color's tone
     playTone(displayColors[index].frequency, 300, setIsPlaying);
 
-    setTimeout(() => {
-      const nextRound = round + 1;
-      if (nextRound > maxRounds) {
-        const score = Math.round(((correct + (isCorrect ? 1 : 0)) / maxRounds) * 100);
-        saveDifficulty("color-sound", "default", score);
-        setScreen("result");
-      } else {
-        setRound(nextRound);
-        const config = getDifficulty("color-sound", "default");
-        generateRound(config.level);
+    if (isCorrect) {
+      setCorrect((c) => c + 1);
+      setFeedback("correct");
+      setTimeout(() => advanceRound(true), 800);
+    } else {
+      setFeedback("wrong");
+      if (attempt >= 2) {
+        // Second wrong — show answer and auto-advance
+        setTimeout(() => advanceRound(false), 1200);
       }
-    }, 800);
+      // First wrong — wait for user to click "Try Again" (no auto-advance)
+    }
+  };
+
+  const handleRetry = () => {
+    setFeedback(null);
+    setSelectedIndex(null);
+    replaySound();
   };
 
   const replaySound = () => {
@@ -172,14 +194,7 @@ export default function ColorSoundPage() {
     <div className="page">
       <nav className="nav">
         <NavLogo />
-        <button
-          onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-          className="btn btn-outline"
-          style={{ minHeight: 40, padding: "8px 16px", fontSize: "0.9rem" }}
-          aria-label="Toggle theme"
-        >
-          {theme === "light" ? "Dark" : "Light"}
-        </button>
+        <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
       </nav>
 
       <div className="main fade fade-1" style={{ maxWidth: 500, padding: "40px 28px 80px" }}>
@@ -324,15 +339,28 @@ export default function ColorSoundPage() {
             </div>
 
             {feedback && (
-              <div
-                style={{
-                  marginTop: 20,
-                  fontSize: "1rem",
-                  fontWeight: 700,
-                  color: feedback === "correct" ? "var(--sage-500)" : "var(--peach-300)",
-                }}
-              >
-                {feedback === "correct" ? "Correct!" : `That was ${displayColors[selectedIndex!]?.name}. The answer was ${targetColor?.name}.`}
+              <div style={{ marginTop: 20, textAlign: "center" }}>
+                <div
+                  style={{
+                    fontSize: "1rem",
+                    fontWeight: 700,
+                    color: feedback === "correct" ? "var(--sage-500)" : "var(--peach-300)",
+                    marginBottom: 8,
+                  }}
+                >
+                  {feedback === "correct"
+                    ? "Correct!"
+                    : `That was ${displayColors[selectedIndex!]?.name}. The answer was ${targetColor?.name}.`}
+                </div>
+                {feedback === "wrong" && attemptsThisRound < 2 && (
+                  <button
+                    onClick={handleRetry}
+                    className="btn btn-primary"
+                    style={{ minHeight: 44, padding: "8px 24px", fontSize: "0.95rem" }}
+                  >
+                    Try Again
+                  </button>
+                )}
               </div>
             )}
           </div>

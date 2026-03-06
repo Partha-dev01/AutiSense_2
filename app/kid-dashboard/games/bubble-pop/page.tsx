@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getDifficulty, saveDifficulty } from "../../../lib/games/difficultyEngine";
 import { addGameActivity } from "../../../lib/db/gameActivity.repository";
 import { updateStreak } from "../../../lib/db/streak.repository";
 import NavLogo from "../../../components/NavLogo";
+import ThemeToggle from "../../../components/ThemeToggle";
 
 type Screen = "start" | "play" | "result";
 
@@ -51,7 +52,7 @@ export default function BubblePopPage() {
   const [poppedCount, setPoppedCount] = useState(0);
   const [startTime, setStartTime] = useState(0);
   const [elapsed, setElapsed] = useState(0);
-  const [nextId, setNextId] = useState(0);
+  const nextIdRef = useRef(0);
   const [speedMult, setSpeedMult] = useState(1);
   const [maxBubbles, setMaxBubbles] = useState(4);
   const [saved, setSaved] = useState(false);
@@ -120,10 +121,11 @@ export default function BubblePopPage() {
     setTarget(t);
 
     const initialCount = Math.min(3 + config.level, 6);
+    nextIdRef.current = 0;
     const initial = spawnBubble(t, 0, initialCount);
     if (!initial.some((b) => b.label === t)) initial[0].label = t;
     setBubbles(initial);
-    setNextId(initialCount);
+    nextIdRef.current = initialCount;
     setScreen("play");
   }, [spawnBubble]);
 
@@ -137,33 +139,21 @@ export default function BubblePopPage() {
   // Spawn new bubbles periodically — ensure at least 1 is always visible
   useEffect(() => {
     if (screen !== "play") return;
-    const interval = Math.max(1200, 2800 - speedMult * 400);
     const iv = setInterval(() => {
       setBubbles((prev) => {
         const active = prev.filter((b) => !b.popped);
-        // Always spawn if no active bubbles (prevents blank screen)
         if (active.length >= maxBubbles) return prev;
         const count = active.length === 0
           ? Math.min(3, maxBubbles)
-          : Math.min(2, maxBubbles - active.length);
-        const spawned = spawnBubble(target, nextId, count);
-        setNextId((n) => n + count);
+          : Math.min(1, maxBubbles - active.length);
+        const id = nextIdRef.current;
+        const spawned = spawnBubble(target, id, count);
+        nextIdRef.current = id + count;
         return [...prev, ...spawned];
       });
-    }, interval);
-    // Also check more frequently for empty screen
-    const fastCheck = setInterval(() => {
-      setBubbles((prev) => {
-        const active = prev.filter((b) => !b.popped);
-        if (active.length > 0) return prev;
-        const count = Math.min(2, maxBubbles);
-        const spawned = spawnBubble(target, nextId, count);
-        setNextId((n) => n + count);
-        return [...prev, ...spawned];
-      });
-    }, 500);
-    return () => { clearInterval(iv); clearInterval(fastCheck); };
-  }, [screen, target, nextId, maxBubbles, speedMult, spawnBubble]);
+    }, 1500);
+    return () => clearInterval(iv);
+  }, [screen, target, maxBubbles, spawnBubble]);
 
   // Clean up old popped bubbles
   useEffect(() => {
@@ -242,14 +232,7 @@ export default function BubblePopPage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button
-            onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-            className="btn btn-outline"
-            style={{ minHeight: 40, padding: "8px 16px", fontSize: "0.9rem" }}
-            aria-label="Toggle theme"
-          >
-            {theme === "light" ? "Dark" : "Light"}
-          </button>
+          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
           <Link href="/kid-dashboard/games" className="btn btn-outline" style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem" }}>
             ← Games
           </Link>

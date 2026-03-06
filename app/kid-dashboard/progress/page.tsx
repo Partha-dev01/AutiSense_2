@@ -7,6 +7,7 @@ import { getTodayActivity, getActivityRange, getTotalGamesPlayed } from "../../l
 import { getStreak } from "../../lib/db/streak.repository";
 import type { GameActivity } from "../../types/gameActivity";
 import NavLogo from "../../components/NavLogo";
+import ThemeToggle from "../../components/ThemeToggle";
 
 type Tab = "today" | "week" | "alltime";
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -42,6 +43,18 @@ function scColor(score: number): string {
 
 function gameName(id: string): string {
   return id.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** De-duplicate entries with same gameId + completedAt within 2 seconds */
+function dedup(acts: GameActivity[]): GameActivity[] {
+  const seen = new Set<string>();
+  return acts.filter((a) => {
+    const bucket = Math.floor(a.completedAt / 2000);
+    const key = `${a.gameId}:${bucket}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 const sc: React.CSSProperties = {
@@ -96,13 +109,13 @@ export default function ProgressPage() {
   }, []);
 
   const loadToday = useCallback(async () => {
-    const acts = await getTodayActivity(childId);
+    const acts = dedup(await getTodayActivity(childId));
     setTodayActs(acts);
   }, [childId]);
 
   const loadWeek = useCallback(async () => {
     const mo = monOff();
-    const acts = await getActivityRange(childId, dateStr(mo), dateStr(mo + 6));
+    const acts = dedup(await getActivityRange(childId, dateStr(mo), dateStr(mo + 6)));
     setWeekActs(acts);
     const counts = [0, 0, 0, 0, 0, 0, 0];
     acts.forEach((a) => {
@@ -176,9 +189,7 @@ export default function ProgressPage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button onClick={() => setTheme(t => t === "light" ? "dark" : "light")} className="btn btn-outline" style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem" }}>
-            {theme === "light" ? "Dark" : "Light"}
-          </button>
+          <ThemeToggle theme={theme} onToggle={() => setTheme(t => t === "light" ? "dark" : "light")} />
           <Link href="/kid-dashboard" className="btn btn-outline" style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem" }}>Home</Link>
         </div>
       </nav>

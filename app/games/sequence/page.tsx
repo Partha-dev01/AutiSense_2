@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getDifficulty, saveDifficulty } from "../../lib/games/difficultyEngine";
 import NavLogo from "../../components/NavLogo";
+import ThemeToggle from "../../components/ThemeToggle";
 
 type Screen = "start" | "play" | "result";
 type Phase = "showing" | "input" | "feedback";
@@ -38,6 +39,8 @@ export default function SequenceGamePage() {
   const [playerInput, setPlayerInput] = useState<number[]>([]);
   const [phase, setPhase] = useState<Phase>("showing");
   const [activeColor, setActiveColor] = useState<number | null>(null);
+  const [showingIndex, setShowingIndex] = useState(0);
+  const [showingTotal, setShowingTotal] = useState(0);
   const [round, setRound] = useState(1);
   const [maxRounds, setMaxRounds] = useState(5);
   const [score, setScore] = useState(0);
@@ -59,19 +62,24 @@ export default function SequenceGamePage() {
   const playSequence = useCallback(
     (seq: number[], speed: number) => {
       setPhase("showing");
+      setShowingTotal(seq.length);
       let i = 0;
       const interval = 700 / speed;
+      const gapMs = 300; // gap between items — all buttons dim briefly
 
       const showNext = () => {
         if (i < seq.length) {
+          setShowingIndex(i + 1);
           setActiveColor(seq[i]);
           playTone(COLORS[seq[i]].freq, interval * 0.8);
           timeoutRef.current = setTimeout(() => {
             setActiveColor(null);
             i++;
-            timeoutRef.current = setTimeout(showNext, interval * 0.3);
+            timeoutRef.current = setTimeout(showNext, gapMs);
           }, interval);
         } else {
+          setShowingIndex(0);
+          setShowingTotal(0);
           setPhase("input");
           setPlayerInput([]);
         }
@@ -164,14 +172,7 @@ export default function SequenceGamePage() {
     <div className="page">
       <nav className="nav">
         <NavLogo />
-        <button
-          onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-          className="btn btn-outline"
-          style={{ minHeight: 40, padding: "8px 16px", fontSize: "0.9rem" }}
-          aria-label="Toggle theme"
-        >
-          {theme === "light" ? "Dark" : "Light"}
-        </button>
+        <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
       </nav>
 
       <div className="main fade fade-1" style={{ maxWidth: 500, padding: "40px 28px 80px" }}>
@@ -219,7 +220,7 @@ export default function SequenceGamePage() {
               <span>Round {round}/{maxRounds}</span>
               <span>
                 {phase === "showing"
-                  ? "Watch..."
+                  ? `Watch! (${showingIndex} of ${showingTotal})`
                   : phase === "input"
                     ? "Your turn!"
                     : "Wrong!"}
@@ -247,13 +248,13 @@ export default function SequenceGamePage() {
                     borderRadius: "var(--r-lg)",
                     border: "3px solid transparent",
                     background: activeColor === i ? color.active : color.bg,
-                    opacity: activeColor === i ? 1 : 0.7,
-                    transform: activeColor === i ? "scale(1.05)" : "scale(1)",
+                    opacity: activeColor === i ? 1 : phase === "showing" ? 0.3 : 0.7,
+                    transform: activeColor === i ? "scale(1.15)" : "scale(1)",
                     transition: "all 150ms var(--ease)",
                     cursor: phase === "input" ? "pointer" : "default",
                     boxShadow:
                       activeColor === i
-                        ? `0 0 20px ${color.active}40`
+                        ? `0 0 30px 8px ${color.active}60`
                         : "none",
                   }}
                   aria-label={color.name}

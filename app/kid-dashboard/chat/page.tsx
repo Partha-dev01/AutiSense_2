@@ -342,8 +342,9 @@ export default function ChatPage() {
 
             {/* Input bar — mic is primary, text is secondary */}
             <div style={{
-              display: "flex", gap: 10, alignItems: "center",
+              display: "flex", gap: 8, alignItems: "center",
               padding: "12px 0 0", borderTop: "2px solid var(--border)",
+              overflow: "hidden",
             }}>
               <button
                 onClick={toggleListening}
@@ -352,7 +353,7 @@ export default function ChatPage() {
                 aria-label={isListening ? "Stop listening" : "Speak"}
                 title={isListening ? "Stop listening" : "Speak"}
                 style={{
-                  minWidth: 64, minHeight: 64, padding: 0, fontSize: "1.5rem",
+                  minWidth: 48, minHeight: 48, padding: 0, fontSize: "1.3rem",
                   borderRadius: "var(--r-lg)", flexShrink: 0,
                   background: isListening ? "#e74c3c" : undefined,
                   borderColor: isListening ? "#e74c3c" : undefined,
@@ -361,7 +362,7 @@ export default function ChatPage() {
               >
                 {isListening ? (
                   <span style={{
-                    display: "inline-block", width: 16, height: 16,
+                    display: "inline-block", width: 14, height: 14,
                     borderRadius: "var(--r-full)", background: "white",
                     animation: "pulse 1s ease-in-out infinite",
                   }} />
@@ -378,7 +379,7 @@ export default function ChatPage() {
                 disabled={isLoading}
                 aria-label="Type your message"
                 style={{
-                  flex: 1, minHeight: 56, padding: "12px 18px", fontSize: "1rem",
+                  flex: 1, minWidth: 0, minHeight: 48, padding: "10px 14px", fontSize: "1rem",
                   borderRadius: "var(--r-lg)", border: "2px solid var(--border)",
                   background: "var(--card)", color: "var(--text-primary)",
                   outline: "none", fontFamily: "inherit",
@@ -391,8 +392,9 @@ export default function ChatPage() {
                 className="btn btn-outline"
                 aria-label="Send message"
                 style={{
-                  minWidth: 56, minHeight: 56, padding: 0, fontSize: "1.1rem",
+                  minWidth: 44, minHeight: 48, padding: "0 10px", fontSize: "0.95rem",
                   borderRadius: "var(--r-lg)", fontFamily: fredoka, fontWeight: 600,
+                  flexShrink: 0,
                 }}
               >
                 Send

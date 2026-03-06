@@ -6,6 +6,7 @@ import { getDifficulty, saveDifficulty } from "../../../lib/games/difficultyEngi
 import { addGameActivity } from "../../../lib/db/gameActivity.repository";
 import { updateStreak } from "../../../lib/db/streak.repository";
 import NavLogo from "../../../components/NavLogo";
+import ThemeToggle from "../../../components/ThemeToggle";
 
 type Screen = "start" | "play" | "result";
 interface Point { x: number; y: number }
@@ -190,13 +191,21 @@ export default function TracingGamePage() {
     const pos = getPos(e); if (pos) drawTrace(pos);
   }, [getPos, drawTrace]);
 
+  const PASS_THRESHOLD = 65;
+
   const finishShape = useCallback(() => {
     drawingRef.current = false;
     const total = hitRef.current.length; if (total === 0) return;
     const pct = Math.round((hitRef.current.filter(Boolean).length / total) * 100);
+
+    if (pct < PASS_THRESHOLD) {
+      setFeedback(`Try Again (${pct}%)`);
+      return; // stay on same shape — user clicks "Try Again" button
+    }
+
     const updated = [...scores, pct]; setScores(updated);
     if (shapeIdx + 1 < shapes.length) {
-      setFeedback("Great!");
+      setFeedback(`Great! (${pct}%)`);
       setTimeout(() => { const next = shapeIdx + 1; setShapeIdx(next); loadShape(shapes, next); }, 900);
     } else {
       const avg = Math.round(updated.reduce((a, b) => a + b, 0) / updated.length);
@@ -219,14 +228,7 @@ export default function TracingGamePage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button
-            onClick={() => setTheme(t => (t === "light" ? "dark" : "light"))}
-            className="btn btn-outline"
-            style={{ minHeight: 40, padding: "8px 16px", fontSize: "0.9rem" }}
-            aria-label="Toggle theme"
-          >
-            {theme === "light" ? "Dark" : "Light"}
-          </button>
+          <ThemeToggle theme={theme} onToggle={() => setTheme(t => (t === "light" ? "dark" : "light"))} />
           <Link href="/kid-dashboard/games" className="btn btn-outline" style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem" }}>
             ← Games
           </Link>
@@ -279,13 +281,28 @@ export default function TracingGamePage() {
             </div>
 
             {feedback && (
-              <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: "1.6rem", fontWeight: 700, color: "var(--sage-500)", marginBottom: 8, transition: "opacity 300ms var(--ease)" }}>
+              <div style={{
+                fontFamily: "'Fredoka',sans-serif", fontSize: "1.4rem", fontWeight: 700, marginBottom: 8,
+                color: feedback.startsWith("Try") ? "var(--peach-300)" : "var(--sage-500)",
+                transition: "opacity 300ms var(--ease)",
+              }}>
                 {feedback}
               </div>
             )}
-            <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: 4 }}>
-              Trace the shape, then lift to submit
-            </p>
+            {feedback?.startsWith("Try") && (
+              <button
+                onClick={() => loadShape(shapes, shapeIdx)}
+                className="btn btn-primary"
+                style={{ marginTop: 8, minHeight: 44, padding: "8px 24px", fontSize: "0.95rem" }}
+              >
+                Try Again
+              </button>
+            )}
+            {!feedback && (
+              <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: 4 }}>
+                Trace the shape, then lift to submit
+              </p>
+            )}
           </div>
         )}
 

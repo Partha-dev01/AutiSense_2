@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect, useCallback, use } from "react";
 import NavLogo from "../../../components/NavLogo";
+import ThemeToggle from "../../../components/ThemeToggle";
 import { getProfile } from "../../../lib/db/childProfile.repository";
 import { listSessions } from "../../../lib/db/session.repository";
 import { aggregateBiomarkers } from "../../../lib/db/biomarker.repository";
@@ -126,14 +127,7 @@ export default function ChildDetailPage({
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button
-            onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-            className="btn btn-outline"
-            style={{ minHeight: 40, padding: "8px 16px", fontSize: "0.9rem", gap: 6 }}
-            aria-label="Toggle theme"
-          >
-            {theme === "light" ? "Dark" : "Light"}
-          </button>
+          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
         </div>
       </nav>
 

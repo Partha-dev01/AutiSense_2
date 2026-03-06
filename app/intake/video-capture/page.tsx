@@ -173,6 +173,11 @@ export default function VideoCapturePage() {
     if (biomarkerTimerRef.current) { clearInterval(biomarkerTimerRef.current); biomarkerTimerRef.current = null; }
 
     await startCamera();
+    // If camera failed, allow retrying
+    if (!streamRef.current) {
+      startingRef.current = false;
+      return;
+    }
     setStarted(true);
     setTimeLeft(ASSESSMENT_SECONDS);
     setSamplesCollected(0);
@@ -287,6 +292,23 @@ export default function VideoCapturePage() {
                   isCamReady={camReady}
                   isModelLoaded={isModelLoaded}
                 />
+
+                {/* Status bar */}
+                <div style={{
+                  display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap",
+                  marginTop: 10, padding: "6px 12px", borderRadius: "var(--r-md)",
+                  background: "var(--bg-secondary)", fontSize: "0.75rem", fontWeight: 600,
+                }}>
+                  <span style={{ color: camReady ? "var(--sage-500)" : "var(--peach-300)" }}>
+                    Camera: {camError ? "Error" : camReady ? "OK" : "Starting..."}
+                  </span>
+                  <span style={{ color: isModelLoaded ? "var(--sage-500)" : modelError ? "var(--peach-300)" : "var(--text-muted)" }}>
+                    Models: {modelError ? "Error" : isModelLoaded ? "Loaded" : "Loading..."}
+                  </span>
+                  <span style={{ color: result ? "var(--sage-500)" : "var(--text-muted)" }}>
+                    Inference: {result ? "Running" : "Waiting"}
+                  </span>
+                </div>
 
                 {/* Modality toggle */}
                 <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "center" }}>

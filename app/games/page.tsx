@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuthGuard } from "../hooks/useAuthGuard";
 import NavLogo from "../components/NavLogo";
+import ThemeToggle from "../components/ThemeToggle";
 
 const games = [
   {
@@ -86,14 +87,7 @@ export default function GamesHubPage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button
-            onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-            className="btn btn-outline"
-            style={{ minHeight: 40, padding: "8px 16px", fontSize: "0.9rem", gap: 6 }}
-            aria-label="Toggle theme"
-          >
-            {theme === "light" ? "Dark" : "Light"}
-          </button>
+          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
           <Link
             href="/kid-dashboard"
             className="btn btn-outline"
