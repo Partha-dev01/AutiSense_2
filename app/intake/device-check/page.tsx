@@ -130,7 +130,7 @@ export default function DeviceCheckPage() {
     <div className="page">
       <nav className="nav">
         <Link href="/" className="logo">
-          <img src="/logo.svg" alt="" className="logo-icon" />Auti<em>Sense</em>
+          <img src="/logo.jpeg" alt="" className="logo-icon" />Auti<em>Sense</em>
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button
