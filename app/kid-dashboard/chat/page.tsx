@@ -171,21 +171,23 @@ export default function ChatPage() {
       return;
     }
 
+    // Clean up any previous instance first
+    stopRecognition();
+
     const recognition = new SpeechRecognition();
-    recognition.continuous = true;
+    // continuous:false — one utterance per mic press, no duplicate concatenation,
+    // no restart loop, no race conditions with start/stop
+    recognition.continuous = false;
     recognition.interimResults = true;
     recognition.lang = "en-US";
-    recognition.maxAlternatives = 3;
+    recognition.maxAlternatives = 1;
     recognitionRef.current = recognition;
 
     let settled = false;
-    let accumulated = "";
-    let silenceTimer: ReturnType<typeof setTimeout> | null = null;
 
     const finish = (text: string) => {
       if (settled) return;
       settled = true;
-      if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
       stopRecognition();
       setIsListening(false);
       if (text.trim()) {
@@ -193,48 +195,17 @@ export default function ChatPage() {
       }
     };
 
-    // Debounce: after final result, wait 2s of silence before sending.
-    // If more speech arrives, reset the timer. This lets users speak
-    // full sentences on mobile where isFinal fires after short pauses.
-    const scheduleSend = () => {
-      if (silenceTimer) clearTimeout(silenceTimer);
-      silenceTimer = setTimeout(() => {
-        if (!settled && accumulated.trim()) {
-          finish(accumulated);
-        }
-      }, 2000);
-    };
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onresult = (event: any) => {
       if (settled) return;
+      // With continuous:false there's only one result set.
+      // Use the last result's best transcript.
+      const last = event.results[event.results.length - 1];
+      const text = last[0].transcript;
+      setTranscript(text);
 
-      // Accumulate full transcript from all results
-      let full = "";
-      for (let i = 0; i < event.results.length; i++) {
-        full += event.results[i][0].transcript;
-      }
-      accumulated = full;
-      setTranscript(full);
-
-      // Check if any result is final — start silence debounce
-      let hasFinal = false;
-      for (let i = 0; i < event.results.length; i++) {
-        if (event.results[i].isFinal) { hasFinal = true; break; }
-      }
-
-      if (hasFinal) {
-        // Got a final result — wait 2s for more speech, then send
-        scheduleSend();
-      } else if (silenceTimer) {
-        // Got interim result while waiting — reset the silence timer
-        // (user is still speaking)
-        clearTimeout(silenceTimer);
-        silenceTimer = setTimeout(() => {
-          if (!settled && accumulated.trim()) {
-            finish(accumulated);
-          }
-        }, 2000);
+      if (last.isFinal) {
+        finish(text);
       }
     };
 
@@ -243,63 +214,41 @@ export default function ChatPage() {
       if (settled) return;
       if (e.error === "not-allowed" || e.error === "audio-capture") {
         settled = true;
-        if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
         stopRecognition();
         setIsListening(false);
         setMicError("Microphone access denied. Please allow microphone in browser settings.");
       }
+      // "no-speech" — recognition ended without hearing anything, just let onend handle it
     };
 
     recognition.onend = () => {
       if (settled) return;
-      // Restart if not settled (recognition ended prematurely)
-      setTimeout(() => {
-        if (settled) return;
-        try {
-          recognition.start();
-        } catch {
-          // If same-instance restart fails, try a fresh instance
-          try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const Fresh = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-            if (!Fresh) return;
-            const fresh = new Fresh();
-            fresh.continuous = true;
-            fresh.interimResults = true;
-            fresh.lang = "en-US";
-            fresh.maxAlternatives = 3;
-            fresh.onresult = recognition.onresult;
-            fresh.onerror = recognition.onerror;
-            fresh.onend = recognition.onend;
-            recognitionRef.current = fresh;
-            fresh.start();
-          } catch {
-            // All restarts failed — send what we have
-            finish(accumulated);
-          }
-        }
-      }, 250);
+      // With continuous:false, onend fires after the utterance.
+      // If we got no result at all, just stop listening.
+      settled = true;
+      recognitionRef.current = null;
+      setIsListening(false);
     };
 
-    // Hard timeout: 15 seconds — send whatever we've accumulated
+    // Hard timeout: 15 seconds
     timerRef.current = setTimeout(() => {
       if (!settled) {
-        finish(accumulated);
+        settled = true;
+        stopRecognition();
+        setIsListening(false);
       }
     }, 15000);
 
-    // Start with retry pattern (copied from communication page)
-    const tryStart = (delay: number, attempt: number) => {
-      setTimeout(() => {
-        if (settled) return;
-        try {
-          recognition.start();
-        } catch {
-          if (attempt < 3) tryStart(delay + 300, attempt + 1);
-        }
-      }, delay);
-    };
-    tryStart(300, 0);
+    // Start with small delay
+    setTimeout(() => {
+      if (settled) return;
+      try {
+        recognition.start();
+      } catch {
+        settled = true;
+        setIsListening(false);
+      }
+    }, 200);
   }, [stopRecognition]);
 
   const toggleListening = useCallback(async () => {
