@@ -113,7 +113,7 @@ function detectWave(
   const mean = xValues.reduce((a, b) => a + b, 0) / xValues.length;
   const variance =
     xValues.reduce((a, x) => a + (x - mean) ** 2, 0) / xValues.length;
-  const threshold = 0.015;
+  const threshold = 0.01;
   return {
     hit: variance > threshold,
     proximity: Math.min(1, variance / threshold),
@@ -126,41 +126,31 @@ function detectClap(
   scale: number,
   history: Float32Array[] = [],
 ): { hit: boolean; proximity: number } {
-  // Relaxed: only need ONE wrist confident (hands occlude each other when clapping)
-  const hasL = conf[L_WRIST] > 0.15;
-  const hasR = conf[R_WRIST] > 0.15;
-  if (!hasL && !hasR) return { hit: false, proximity: 0 };
+  // Need BOTH wrists visible for a reliable clap detection
+  const hasL = conf[L_WRIST] > 0.2;
+  const hasR = conf[R_WRIST] > 0.2;
+  if (!hasL || !hasR) return { hit: false, proximity: 0 };
 
-  // If both wrists visible: check distance (relaxed threshold)
-  if (hasL && hasR) {
-    const d = dist(kp(kps, L_WRIST), kp(kps, R_WRIST));
-    const threshold = 0.6 * scale;
-    if (d < threshold) return { hit: true, proximity: Math.max(0, 1 - d / threshold) };
+  const d = dist(kp(kps, L_WRIST), kp(kps, R_WRIST));
+  const threshold = 0.35 * scale;
 
-    // Also check approach motion: wrists getting closer over recent frames
-    if (history.length >= 2) {
-      const prev = history[history.length - 2];
-      if (prev) {
-        const prevD = dist(kp(prev, L_WRIST), kp(prev, R_WRIST));
-        const delta = prevD - d; // positive = hands approaching
-        if (delta > 0.04 * scale && d < scale) {
-          return { hit: true, proximity: Math.min(1, delta / (0.1 * scale)) };
-        }
+  // Static: hands are close together
+  if (d < threshold) return { hit: true, proximity: Math.max(0, 1 - d / threshold) };
+
+  // Dynamic: hands rapidly approaching (clap motion)
+  if (history.length >= 3) {
+    const prev = history[history.length - 2];
+    const prevPrev = history[history.length - 3];
+    if (prev && prevPrev) {
+      const prevD = dist(kp(prev, L_WRIST), kp(prev, R_WRIST));
+      const ppD = dist(kp(prevPrev, L_WRIST), kp(prevPrev, R_WRIST));
+      // Both frames show hands converging AND current distance is reasonably small
+      if (ppD > prevD && prevD > d && d < 0.6 * scale) {
+        return { hit: true, proximity: Math.min(1, (prevD - d) / (0.1 * scale)) };
       }
     }
-    return { hit: false, proximity: Math.max(0, 1 - d / (0.6 * scale)) };
   }
-
-  // Single wrist fallback: if wrist is near body center (hands together, one occluded)
-  const wristIdx = hasL ? L_WRIST : R_WRIST;
-  const midX = (kps[L_SHOULDER * 2] + kps[R_SHOULDER * 2]) / 2;
-  const wristX = kps[wristIdx * 2];
-  const dCenter = Math.abs(wristX - midX);
-  const centerThreshold = 0.25 * scale;
-  if (dCenter < centerThreshold) {
-    return { hit: true, proximity: Math.max(0, 1 - dCenter / centerThreshold) };
-  }
-  return { hit: false, proximity: 0.2 };
+  return { hit: false, proximity: Math.max(0, 1 - d / (0.5 * scale)) };
 }
 
 function detectRaiseArms(
@@ -168,21 +158,22 @@ function detectRaiseArms(
   conf: Float32Array,
   scale: number,
 ): { hit: boolean; proximity: number } {
-  // Relaxed: only need ONE side confident (either arm raised counts)
-  const hasLeft = conf[L_WRIST] > 0.2 && conf[L_SHOULDER] > 0.2;
-  const hasRight = conf[R_WRIST] > 0.2 && conf[R_SHOULDER] > 0.2;
+  // Need at least one side with both wrist + shoulder confident
+  const hasLeft = conf[L_WRIST] > 0.25 && conf[L_SHOULDER] > 0.25;
+  const hasRight = conf[R_WRIST] > 0.25 && conf[R_SHOULDER] > 0.25;
   if (!hasLeft && !hasRight) return { hit: false, proximity: 0 };
 
-  const margin = 0.06 * scale; // More generous margin
+  // Wrist must be clearly above shoulder (margin = 15% of torso height)
+  const margin = 0.15 * scale;
   let lUp = false;
   let rUp = false;
 
   if (hasLeft) lUp = kps[L_WRIST * 2 + 1] < kps[L_SHOULDER * 2 + 1] - margin;
   if (hasRight) rUp = kps[R_WRIST * 2 + 1] < kps[R_SHOULDER * 2 + 1] - margin;
 
-  // Detect if EITHER arm is raised (OR gate instead of AND)
+  // Either arm raised counts, but need clear raise
   const hit = lUp || rUp;
-  const proximity = (lUp ? 0.6 : 0) + (rUp ? 0.6 : 0);
+  const proximity = (lUp ? 0.5 : 0) + (rUp ? 0.5 : 0);
   return { hit, proximity: Math.min(1, proximity) };
 }
 
@@ -270,7 +261,7 @@ export function detectAction(
 
 // ── Sustained detection tracker ─────────────────────────────────────
 
-const REQUIRED_CONSECUTIVE = 6;
+const REQUIRED_CONSECUTIVE = 8;
 
 export class ActionTracker {
   private consecutiveHits = 0;
