@@ -107,19 +107,45 @@ function detectTouchNose(
   conf: Float32Array,
   scale: number,
 ): { hit: boolean; proximity: number; detail: string } {
-  const noseOk = conf[NOSE] > CONF_GATE;
+  // HEAD-REGION approach: YOLO nose keypoint drifts when hand occludes face,
+  // so instead of measuring wrist-to-nose distance, check if wrist is in the
+  // "face zone" — above shoulders, horizontally between them.
   const lOk = conf[L_WRIST] > CONF_GATE;
   const rOk = conf[R_WRIST] > CONF_GATE;
-  if (!noseOk || (!lOk && !rOk))
-    return { hit: false, proximity: 0, detail: `noseConf=${conf[NOSE]?.toFixed(2)} lW=${conf[L_WRIST]?.toFixed(2)} rW=${conf[R_WRIST]?.toFixed(2)}` };
+  const shouldersOk = conf[L_SHOULDER] > CONF_GATE && conf[R_SHOULDER] > CONF_GATE;
+  if ((!lOk && !rOk) || !shouldersOk)
+    return { hit: false, proximity: 0, detail: `lW=${conf[L_WRIST]?.toFixed(2)} rW=${conf[R_WRIST]?.toFixed(2)} sOk=${shouldersOk}` };
 
-  const nose = kp(kps, NOSE);
-  const dL = lOk ? dist(kp(kps, L_WRIST), nose) : Infinity;
-  const dR = rOk ? dist(kp(kps, R_WRIST), nose) : Infinity;
-  const minD = Math.min(dL, dR);
-  const threshold = 0.6 * scale; // very generous — nose keypoint drifts when hand is near face
-  const proximity = Math.max(0, 1 - minD / (threshold * 2));
-  return { hit: minD < threshold, proximity, detail: `minD=${minD.toFixed(1)} thr=${threshold.toFixed(1)} scale=${scale.toFixed(1)}` };
+  // Face zone: center between shoulders, above shoulder line
+  const faceCenterX = (kps[L_SHOULDER * 2] + kps[R_SHOULDER * 2]) / 2;
+  const shoulderY = (kps[L_SHOULDER * 2 + 1] + kps[R_SHOULDER * 2 + 1]) / 2;
+  const shoulderWidth = Math.abs(kps[L_SHOULDER * 2] - kps[R_SHOULDER * 2]);
+
+  // Check each wrist: how close to face zone?
+  let bestProx = 0;
+  let bestHit = false;
+  let detail = "";
+
+  for (const [ok, idx, label] of [[lOk, L_WRIST, "L"], [rOk, R_WRIST, "R"]] as const) {
+    if (!ok) continue;
+    const wx = kps[idx * 2];
+    const wy = kps[idx * 2 + 1];
+    // Horizontal: how far from face center (normalized by shoulder width)
+    const dx = Math.abs(wx - faceCenterX) / Math.max(shoulderWidth, 0.01);
+    // Vertical: how far above shoulders (positive = above)
+    const dy = (shoulderY - wy) / scale;
+    // Wrist is in face zone if: horizontally within 1× shoulder width, and above shoulder line
+    const hProx = Math.max(0, 1 - dx); // 1.0 at center, 0 at 1× shoulder width away
+    const vProx = Math.max(0, Math.min(1, dy / 0.3)); // 1.0 when 0.3×scale above shoulders
+    const prox = Math.min(hProx, vProx);
+    const isHit = dx < 0.8 && dy > -0.05; // generous: within shoulder width, roughly at or above shoulder
+    detail += `${label}:dx=${dx.toFixed(2)} dy=${dy.toFixed(2)} hp=${hProx.toFixed(2)} vp=${vProx.toFixed(2)} `;
+    if (prox > bestProx) bestProx = prox;
+    if (isHit) bestHit = true;
+  }
+
+  detail += `scale=${scale.toFixed(3)} shW=${shoulderWidth.toFixed(3)}`;
+  return { hit: bestHit, proximity: bestProx, detail };
 }
 
 function detectWave(
@@ -162,42 +188,43 @@ function detectClap(
 
   if (hasL && hasR) {
     const d = dist(kp(kps, L_WRIST), kp(kps, R_WRIST));
-    const hitThreshold = 0.7 * scale; // very generous — hands "close" = clap
-    const proximityRange = 1.5 * scale;
+    const hitThreshold = 1.0 * scale; // 1× body scale — very generous
+    const proximityRange = 2.0 * scale;
 
-    // Dynamic: hands rapidly approaching
-    if (history.length >= 3) {
-      const prev = history[history.length - 2];
-      const prevPrev = history[history.length - 3];
-      if (prev && prevPrev) {
+    // Dynamic: hands approaching over 2 frames
+    if (history.length >= 2) {
+      const prev = history[history.length - 1];
+      if (prev) {
         const prevD = dist(kp(prev, L_WRIST), kp(prev, R_WRIST));
-        const ppD = dist(kp(prevPrev, L_WRIST), kp(prevPrev, R_WRIST));
-        if (ppD > prevD && prevD > d && d < scale) {
-          return { hit: true, proximity: Math.min(1, (prevD - d) / (0.05 * scale)), detail: `dynamic d=${d.toFixed(2)} prev=${prevD.toFixed(2)}` };
+        if (prevD > d && d < 1.2 * scale) {
+          const approach = (prevD - d) / scale;
+          if (approach > 0.02) {
+            return { hit: true, proximity: Math.min(1, approach / 0.05), detail: `dynamic d=${d.toFixed(3)} prev=${prevD.toFixed(3)} approach=${approach.toFixed(3)}` };
+          }
         }
       }
     }
 
-    if (d < hitThreshold) return { hit: true, proximity: Math.max(0.5, 1 - d / hitThreshold), detail: `static d=${d.toFixed(2)} thr=${hitThreshold.toFixed(2)}` };
-    return { hit: false, proximity: Math.max(0, 1 - d / proximityRange), detail: `dist d=${d.toFixed(2)} range=${proximityRange.toFixed(2)}` };
+    if (d < hitThreshold) return { hit: true, proximity: Math.max(0.5, 1 - d / hitThreshold), detail: `static d=${d.toFixed(3)} thr=${hitThreshold.toFixed(3)}` };
+    return { hit: false, proximity: Math.max(0, 1 - d / proximityRange), detail: `dist d=${d.toFixed(3)} range=${proximityRange.toFixed(3)}` };
   }
 
   // Single wrist near body center — when hands clap, one wrist occludes the other
   if (hasL || hasR) {
     const wristIdx = hasL ? L_WRIST : R_WRIST;
-    const shoulderOk = conf[L_SHOULDER] > CONF_GATE && conf[R_SHOULDER] > CONF_GATE;
+    const shoulderOk = conf[L_SHOULDER] > CONF_GATE || conf[R_SHOULDER] > CONF_GATE;
     if (shoulderOk) {
-      const midX = (kps[L_SHOULDER * 2] + kps[R_SHOULDER * 2]) / 2;
-      const wristY = kps[wristIdx * 2 + 1];
-      const shoulderY = (kps[L_SHOULDER * 2 + 1] + kps[R_SHOULDER * 2 + 1]) / 2;
+      const lsOk = conf[L_SHOULDER] > CONF_GATE;
+      const rsOk = conf[R_SHOULDER] > CONF_GATE;
+      const midX = lsOk && rsOk
+        ? (kps[L_SHOULDER * 2] + kps[R_SHOULDER * 2]) / 2
+        : lsOk ? kps[L_SHOULDER * 2] : kps[R_SHOULDER * 2];
       const dCenter = Math.abs(kps[wristIdx * 2] - midX);
-      const centerThreshold = 0.35 * scale;
-      // Wrist must be in front of body (between shoulders and hips vertically)
-      const inFront = wristY > shoulderY - 0.2 * scale;
-      if (dCenter < centerThreshold && inFront) {
-        return { hit: true, proximity: Math.max(0.5, 1 - dCenter / centerThreshold), detail: `1wrist-center dC=${dCenter.toFixed(2)} thr=${centerThreshold.toFixed(2)}` };
+      const centerThreshold = 0.5 * scale; // very generous
+      if (dCenter < centerThreshold) {
+        return { hit: true, proximity: Math.max(0.5, 1 - dCenter / centerThreshold), detail: `1wrist-center dC=${dCenter.toFixed(3)} thr=${centerThreshold.toFixed(3)}` };
       }
-      return { hit: false, proximity: Math.max(0.1, 0.4 * (1 - dCenter / (0.6 * scale))), detail: `1wrist dC=${dCenter.toFixed(2)} inFront=${inFront}` };
+      return { hit: false, proximity: Math.max(0.1, 0.5 * (1 - dCenter / scale)), detail: `1wrist dC=${dCenter.toFixed(3)}` };
     }
   }
 
@@ -266,17 +293,32 @@ function detectTouchHead(
   conf: Float32Array,
   scale: number,
 ): { hit: boolean; proximity: number; detail: string } {
-  const noseOk = conf[NOSE] > CONF_GATE;
+  // Same head-region approach as touch_nose — wrist above shoulders, near center
   const lOk = conf[L_WRIST] > CONF_GATE;
   const rOk = conf[R_WRIST] > CONF_GATE;
-  if (!noseOk || (!lOk && !rOk))
+  const shouldersOk = conf[L_SHOULDER] > CONF_GATE && conf[R_SHOULDER] > CONF_GATE;
+  if ((!lOk && !rOk) || !shouldersOk)
     return { hit: false, proximity: 0, detail: "low conf" };
-  const nose = kp(kps, NOSE);
-  const dL = lOk ? dist(kp(kps, L_WRIST), nose) : Infinity;
-  const dR = rOk ? dist(kp(kps, R_WRIST), nose) : Infinity;
-  const minD = Math.min(dL, dR);
-  const threshold = 0.6 * scale;
-  return { hit: minD < threshold, proximity: Math.max(0, 1 - minD / (threshold * 2)), detail: `d=${minD.toFixed(2)} thr=${threshold.toFixed(2)}` };
+
+  const faceCenterX = (kps[L_SHOULDER * 2] + kps[R_SHOULDER * 2]) / 2;
+  const shoulderY = (kps[L_SHOULDER * 2 + 1] + kps[R_SHOULDER * 2 + 1]) / 2;
+  const shoulderWidth = Math.abs(kps[L_SHOULDER * 2] - kps[R_SHOULDER * 2]);
+
+  let bestProx = 0;
+  let hit = false;
+  let detail = "";
+
+  for (const [ok, idx, label] of [[lOk, L_WRIST, "L"], [rOk, R_WRIST, "R"]] as const) {
+    if (!ok) continue;
+    const dx = Math.abs(kps[idx * 2] - faceCenterX) / Math.max(shoulderWidth, 0.01);
+    const dy = (shoulderY - kps[idx * 2 + 1]) / scale;
+    const prox = Math.min(Math.max(0, 1 - dx), Math.max(0, Math.min(1, dy / 0.3)));
+    if (dx < 1.0 && dy > -0.1) hit = true; // even more generous than touch_nose
+    if (prox > bestProx) bestProx = prox;
+    detail += `${label}:dx=${dx.toFixed(2)} dy=${dy.toFixed(2)} `;
+  }
+
+  return { hit, proximity: bestProx, detail };
 }
 
 function detectTouchEars(

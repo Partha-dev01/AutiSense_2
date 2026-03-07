@@ -1087,6 +1087,25 @@ A complete kids-facing dashboard with bottom tab navigation, daily games, AI cha
 
 **Commits:** `6c36e99`, `78bc739`, `6e1500f`, `9787c2f`, `1788d1f`, `d22c272`
 
+### v2.6.2 — 2026-03-07 (Action Detection — Head-Region & Clap Sensitivity)
+
+**Problem**: Touch-nose required hand to go diagonally above head because YOLO nose keypoint drifts when hand occludes face. Clap "gets closer" but never triggers — threshold still too tight.
+
+**Touch nose & touch head — rewritten to head-region approach:**
+- No longer measures wrist-to-nose distance (unreliable when hand near face)
+- Instead checks if wrist is in the **face zone**: horizontally within shoulder width, vertically at or above shoulder line
+- Uses shoulder width as horizontal reference, body scale as vertical reference
+- `dx < 0.8` (within 80% of shoulder width) and `dy > -0.05` (roughly at shoulder height or above) = hit
+- Proximity = min(horizontal proximity, vertical proximity) for smooth "getting closer" feedback
+
+**Clap — much more sensitive:**
+- Hit threshold: 0.7 → **1.0×scale** (hands within 1 body-length = clap)
+- Dynamic approach: only needs **2 frames** (was 3), approach delta > 0.02×scale triggers hit
+- Single-wrist center fallback: threshold 0.35 → **0.5×scale**, removed `inFront` restriction
+- Only needs 1 shoulder visible (OR gate) for center calculation
+
+**File:** `app/lib/actions/actionDetector.ts`
+
 ### v2.6.1 — 2026-03-07 (Action Detection — Sensitivity Overhaul)
 
 **Root cause**: All confidence gates were set to 0.15, but YOLO keypoint confidence drops well below that when body parts overlap (e.g., hand near face, hands clapping). The skeleton was visibly drawn on screen but detection returned `prox=0.00` because keypoints failed the gate.
