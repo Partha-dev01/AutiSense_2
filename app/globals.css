@@ -195,7 +195,7 @@ body {
     border-color 400ms var(--ease);
 }
 @media (min-width: 768px) {
-  .nav { padding: 16px 32px; min-height: 64px; }
+  .nav { padding: 16px 32px; min-height: 72px; }
 }
 .logo {
   display: flex;
@@ -205,7 +205,7 @@ body {
   font-weight: 700;
   font-size: 1.5rem;
   color: var(--sage-600);
-  letter-spacing: 0.4px;
+  letter-spacing: -0.2px;
   text-decoration: none;
   transition: color 400ms var(--ease);
   flex-shrink: 0;
@@ -219,8 +219,8 @@ body {
   font-style: normal;
 }
 .logo-icon {
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
