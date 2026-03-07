@@ -29,7 +29,7 @@ function LoginContent() {
       {/* Nav */}
       <nav className="nav">
         <Link href="/" className="logo" style={{ textDecoration: "none" }}>
-          Auti<em>Sense</em>
+          <img src="/logo.svg" alt="" className="logo-icon" />Auti<em>Sense</em>
         </Link>
       </nav>
 
@@ -236,7 +236,7 @@ export default function LoginPage() {
         <div className="page">
           <nav className="nav">
             <span className="logo">
-              Auti<em>Sense</em>
+              <img src="/logo.svg" alt="" className="logo-icon" />Auti<em>Sense</em>
             </span>
           </nav>
           <main

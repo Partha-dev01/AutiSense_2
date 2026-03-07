@@ -178,8 +178,8 @@ body {
 
 /* ── Nav ── */
 .nav {
-  padding: 20px 32px;
-  min-height: 64px;
+  padding: 14px 24px;
+  min-height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -188,21 +188,46 @@ body {
   border-bottom: 2px solid var(--border);
   position: relative;
   z-index: 10;
+  gap: 12px;
+  overflow: hidden;
   transition:
     background 400ms var(--ease),
     border-color 400ms var(--ease);
 }
+@media (min-width: 768px) {
+  .nav { padding: 16px 32px; min-height: 64px; }
+}
 .logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-family: "Fredoka", sans-serif;
   font-weight: 700;
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   color: var(--sage-600);
   letter-spacing: 0.4px;
+  text-decoration: none;
   transition: color 400ms var(--ease);
+  flex-shrink: 0;
 }
+@media (min-width: 768px) {
+  .logo { font-size: 1.75rem; }
+}
+.logo:hover { text-decoration: none; }
 .logo em {
   color: var(--sage-500);
   font-style: normal;
+}
+.logo-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid var(--sage-200, #c8d8cb);
+}
+[data-theme="dark"] .logo-icon {
+  border-color: var(--sage-500);
 }
 
 /* ── Step progress ── */

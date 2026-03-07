@@ -114,7 +114,7 @@ export default function ProfilePage() {
     <div className="page">
       <nav className="nav">
         <Link href="/" className="logo">
-          Auti<em>Sense</em>
+          <img src="/logo.svg" alt="" className="logo-icon" />Auti<em>Sense</em>
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button

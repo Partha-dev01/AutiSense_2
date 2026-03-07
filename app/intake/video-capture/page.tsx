@@ -219,7 +219,7 @@ export default function VideoCapturePage() {
   return (
     <div className="page">
       <nav className="nav">
-        <Link href="/" className="logo">Auti<em>Sense</em></Link>
+        <Link href="/" className="logo"><img src="/logo.svg" alt="" className="logo-icon" />Auti<em>Sense</em></Link>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button onClick={toggleTheme} className="btn btn-outline" style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.88rem" }}>
             {theme === "light" ? "🌙" : "☀️"}

@@ -1087,6 +1087,25 @@ A complete kids-facing dashboard with bottom tab navigation, daily games, AI cha
 
 **Commits:** `6c36e99`, `78bc739`, `6e1500f`, `9787c2f`, `1788d1f`, `d22c272`
 
+### v2.7.1 — 2026-03-07 (Navbar Logo on All Pages)
+
+**Navbar — logo image on all pages:**
+- Added circular `logo.svg` image (user's custom logo) to the left of "AutiSense" text in every navbar
+- Updated `NavLogo.tsx` shared component (used by ~24 pages) and 14 inline navbar instances
+- Logo displays as 44px circle with `border-radius: 50%` and subtle border
+- Dark mode compatible: border color switches via `[data-theme="dark"]`
+- `text-decoration: none` on `.logo` removes underline on desktop
+- Mobile navbar responsive: `overflow: hidden`, smaller padding, smaller font on `<768px`
+- Footer logo in `page.tsx` uses smaller 28px variant
+
+**Files changed:**
+- `app/components/NavLogo.tsx` — added `<img src="/logo.svg" className="logo-icon" />`
+- 8 intake pages (audio, behavioral-observation, communication, motor, preparation, report, video-capture, visual-engagement) — single-line logo update
+- 4 intake pages (child-profile, device-check, profile, summary) — multiline logo update
+- `app/auth/login/page.tsx` — 2 navbar instances (Link + span)
+- `app/page.tsx` — footer span logo
+- `app/globals.css` — `.logo` flex layout, `.logo-icon` circle styling, responsive rules (already done in v2.7.0)
+
 ### v2.7.0 — 2026-03-07 (Detection UI, Face Pipeline Fix, Body Noise Gate)
 
 **UI — Detection page layout overhaul:**
