@@ -1087,14 +1087,14 @@ A complete kids-facing dashboard with bottom tab navigation, daily games, AI cha
 
 **Commits:** `6c36e99`, `78bc739`, `6e1500f`, `9787c2f`, `1788d1f`, `d22c272`
 
-### v2.5.3 — 2026-03-07 (Speech Debug & Sensitivity Patch)
+### v2.5.3 — 2026-03-07 (Speech Recognition Fix)
 
-**Word Echo — Debug & Sensitivity:**
-- Restored original `getUserMedia`-based MicVisualizer (real audio-reactive bars, not CSS animation)
-- Added temporary debug panel showing real-time SpeechRecognition events (onstart, onaudiostart, onsoundstart, onspeechstart, onresult, onerror, onend) with timestamps
-- Made word matching much more sensitive: checks interim results (not just isFinal), all alternatives across all results, fuzzy matching (edit distance ≤1, prefix match)
+**Word Echo — Detection & Matching:**
+- Restored original `getUserMedia`-based MicVisualizer (real audio-reactive bars)
+- Made word matching much more sensitive: checks interim results (not just isFinal), all alternatives, fuzzy matching (edit distance ≤1, prefix match)
+- Added multi-word support: repeated words like "dog dog" now match correctly (each part matched sequentially)
 - Increased hard timeout from 8s to 10s
-- Re-acquired mic stream for visualizer (SpeechRecognition uses its own internal mic access)
+- Removed temporary debug panel (diagnosis complete — issue was mic coexistence)
 
 **Files modified:** 2 files (`app/intake/communication/page.tsx`, `docs/DOCS.md`)
 **Resolved issues:** R58

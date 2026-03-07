@@ -126,12 +126,8 @@ export default function CommunicationPage() {
   // Shared mic stream — acquired once on start, used by visualizer + kept alive
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
 
-  // Debug log for SpeechRecognition events (temporary diagnostic)
-  const [debugLog, setDebugLog] = useState<string[]>([]);
-  const addDebug = useCallback((msg: string) => {
-    const ts = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    setDebugLog((prev) => [`[${ts}] ${msg}`, ...prev].slice(0, 30));
-  }, []);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const addDebug = useCallback((_msg: string) => { /* debug removed */ }, []);
 
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -296,32 +292,53 @@ export default function CommunicationPage() {
     addDebug(`Recognition created — expecting "${expected}"`);
 
     // Fuzzy match: check if any word in transcript is close enough
+    // Also handles multi-word expected like "dog dog" — matches if all parts found
     const isMatch = (text: string): boolean => {
       const t = text.toLowerCase().trim();
       if (!t) return false;
-      // Exact substring
-      if (t.includes(expected)) return true;
-      // Check individual words
-      const words = t.split(/\s+/);
-      for (const w of words) {
-        if (w === expected) return true;
-        // Allow off-by-one character (simple edit distance 1)
-        if (expected.length > 2 && w.length > 2) {
-          if (Math.abs(w.length - expected.length) <= 1) {
-            let diff = 0;
-            const longer = w.length >= expected.length ? w : expected;
-            const shorter = w.length >= expected.length ? expected : w;
-            let si = 0;
-            for (let li = 0; li < longer.length && si < shorter.length; li++) {
-              if (longer[li] !== shorter[si]) { diff++; } else { si++; }
-            }
-            diff += shorter.length - si;
-            if (diff <= 1) return true;
+
+      // If expected has multiple words (e.g. "dog dog"), check each part
+      const expectedParts = expected.split(/\s+/);
+      if (expectedParts.length > 1) {
+        const tWords = t.split(/\s+/);
+        let ti = 0;
+        for (const part of expectedParts) {
+          let found = false;
+          while (ti < tWords.length) {
+            if (fuzzyWordMatch(tWords[ti], part)) { found = true; ti++; break; }
+            ti++;
           }
+          if (!found) return false;
         }
-        // Starts-with for short words
-        if (expected.length >= 3 && w.startsWith(expected.substring(0, 3))) return true;
+        return true;
       }
+
+      // Single word matching
+      if (t.includes(expected)) return true;
+      const tWords = t.split(/\s+/);
+      for (const w of tWords) {
+        if (fuzzyWordMatch(w, expected)) return true;
+      }
+      return false;
+    };
+
+    const fuzzyWordMatch = (word: string, target: string): boolean => {
+      if (word === target) return true;
+      if (word.includes(target) || target.includes(word)) return true;
+      // Edit distance 1 for words > 2 chars
+      if (target.length > 2 && word.length > 2 && Math.abs(word.length - target.length) <= 1) {
+        let diff = 0;
+        const longer = word.length >= target.length ? word : target;
+        const shorter = word.length >= target.length ? target : word;
+        let si = 0;
+        for (let li = 0; li < longer.length && si < shorter.length; li++) {
+          if (longer[li] !== shorter[si]) { diff++; } else { si++; }
+        }
+        diff += shorter.length - si;
+        if (diff <= 1) return true;
+      }
+      // Prefix match for words >= 3 chars
+      if (target.length >= 3 && word.startsWith(target.substring(0, 3))) return true;
       return false;
     };
 
@@ -445,8 +462,6 @@ export default function CommunicationPage() {
     if (!word) return;
     setWordState("playing");
     setTranscript("");
-    setDebugLog([]);
-    addDebug(`Playing word: "${word.text}"`);
     await speakWord(word.text);
     // Acquire mic for visualizer (SpeechRecognition uses its own internal mic)
     if (!micStream) await acquireMic();
@@ -730,22 +745,6 @@ export default function CommunicationPage() {
               ))}
             </div>
 
-            {/* DEBUG PANEL — temporary diagnostic */}
-            {debugLog.length > 0 && (
-              <div style={{
-                marginTop: 16, padding: "10px 14px", borderRadius: 10,
-                background: "#1a1a2e", color: "#00ff88", fontSize: "0.7rem",
-                fontFamily: "monospace", maxHeight: 200, overflowY: "auto",
-                textAlign: "left", border: "2px solid #333",
-              }}>
-                <div style={{ fontWeight: 700, color: "#ffaa00", marginBottom: 6, fontSize: "0.75rem" }}>
-                  DEBUG — SpeechRecognition Events
-                </div>
-                {debugLog.map((line, i) => (
-                  <div key={i} style={{ padding: "1px 0", opacity: i === 0 ? 1 : 0.7 }}>{line}</div>
-                ))}
-              </div>
-            )}
           </div>
         )}
 
