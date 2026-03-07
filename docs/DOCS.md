@@ -653,6 +653,7 @@ npx playwright test    # Run all 30 tests
 | R55 | **Action detection challenge: flickery UI, negative timer, detection too difficult** | Three issues: (1) Timer displayed negative values (e.g. "-154s") because tick interval decremented past 0 before clearing. Fix: clamp `t` to 0 and clear interval before calling `setTimeoutSeconds`. (2) Status text ("Looking for...", "Getting closer!", "Almost there!") flickered rapidly every frame as detection confidence oscillated. Fix: debounced status with 500ms hold — status category must be stable for 500ms before text updates. Progress dots also debounced (only update on ≥2 hit change). (3) Detection nearly impossible: `REQUIRED_CONSECUTIVE` was 10, miss penalty was -2 (vs +1 on hit), and confidence gate was 0.4. Fix: lowered to 8 required hits, -1 miss penalty (1:1 ratio), 0.3 confidence gate (matches individual detector thresholds). Timeout increased from 15s to 20s per action. `app/intake/preparation/page.tsx`, `app/lib/actions/actionDetector.ts` |
 | R56 | **Speech recognition instant "no match" on other devices/Chrome tabs** | Two issues: (1) `onerror` treated transient errors as fatal. Fix: only `"not-allowed"` is fatal now. (2) `onend` had a retry limit of 5 (×200ms = 1s) which expired before the 8s hard timeout, causing premature "missed". Fix: `onend` now restarts indefinitely with no retry limit — ONLY the hard `setTimeout` (8s) can mark "missed". Applied to all 3 audio pages. `app/intake/communication/page.tsx`, `app/kid-dashboard/speech/page.tsx`, `app/intake/audio/page.tsx` |
 | R57 | **Word Echo mic visualizer blocks SpeechRecognition on some devices** | `getUserMedia` stream + `AudioContext` + `AnalyserNode` monopolized the mic hardware on some Chrome builds, causing SpeechRecognition to receive zero audio (visualizer bars moved but "Heard:" transcript never appeared). Fix: removed `getUserMedia` stream entirely — mic stream is released before `recognition.start()`. Replaced real-time MicVisualizer with CSS-animated bars during listening state. SpeechRecognition now has exclusive mic access. `app/intake/communication/page.tsx` |
+| R58 | **Speech recognition debug + sensitivity patch** | SpeechRecognition `onresult` never fires on some devices despite mic activity. Fix: (1) Restored original `getUserMedia`-based MicVisualizer (real audio bars, not CSS) for visual feedback. (2) Added temporary debug panel showing all SpeechRecognition events in real-time: `onstart`, `onaudiostart`, `onsoundstart`, `onspeechstart`, `onresult`, `onerror`, `onend` — with timestamps. (3) Made word matching much more sensitive: checks interim results (not just `isFinal`), checks all alternatives across all results, fuzzy matching with edit distance ≤1 and prefix matching. (4) Increased hard timeout from 8s to 10s. `app/intake/communication/page.tsx` |
 
 ---
 
@@ -1085,6 +1086,18 @@ A complete kids-facing dashboard with bottom tab navigation, daily games, AI cha
 - `app/intake/report/page.tsx` (AI status badges + fallback warning)
 
 **Commits:** `6c36e99`, `78bc739`, `6e1500f`, `9787c2f`, `1788d1f`, `d22c272`
+
+### v2.5.3 — 2026-03-07 (Speech Debug & Sensitivity Patch)
+
+**Word Echo — Debug & Sensitivity:**
+- Restored original `getUserMedia`-based MicVisualizer (real audio-reactive bars, not CSS animation)
+- Added temporary debug panel showing real-time SpeechRecognition events (onstart, onaudiostart, onsoundstart, onspeechstart, onresult, onerror, onend) with timestamps
+- Made word matching much more sensitive: checks interim results (not just isFinal), all alternatives across all results, fuzzy matching (edit distance ≤1, prefix match)
+- Increased hard timeout from 8s to 10s
+- Re-acquired mic stream for visualizer (SpeechRecognition uses its own internal mic access)
+
+**Files modified:** 2 files (`app/intake/communication/page.tsx`, `docs/DOCS.md`)
+**Resolved issues:** R58
 
 ### v2.5.2 — 2026-03-07 (Action Detection Fix)
 

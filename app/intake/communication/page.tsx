@@ -126,6 +126,13 @@ export default function CommunicationPage() {
   // Shared mic stream — acquired once on start, used by visualizer + kept alive
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
 
+  // Debug log for SpeechRecognition events (temporary diagnostic)
+  const [debugLog, setDebugLog] = useState<string[]>([]);
+  const addDebug = useCallback((msg: string) => {
+    const ts = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    setDebugLog((prev) => [`[${ts}] ${msg}`, ...prev].slice(0, 30));
+  }, []);
+
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -186,9 +193,17 @@ export default function CommunicationPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // acquireMic removed — getUserMedia monopolizes mic on some Chrome builds,
-  // preventing SpeechRecognition from receiving audio. Recognition handles
-  // its own mic access internally.
+  // Acquire mic stream for visualizer — SpeechRecognition uses its own internal mic
+  const acquireMic = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setMicStream(stream);
+      addDebug("getUserMedia: mic acquired OK");
+    } catch (err) {
+      addDebug(`getUserMedia FAILED: ${err instanceof Error ? err.message : String(err)}`);
+      setMicAvailable(false);
+    }
+  }, [addDebug]);
 
   const stopRecognition = useCallback(() => {
     if (recognitionRef.current) {
@@ -264,72 +279,109 @@ export default function CommunicationPage() {
   const startListening = useCallback((expectedWord: string) => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
+      addDebug("SpeechRecognition API not available");
       setWordState("missed");
       return;
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = true;       // keep listening — don't stop on silence
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
     recognition.maxAlternatives = 3;
     recognitionRef.current = recognition;
 
     let settled = false;
+    const expected = expectedWord.toLowerCase().trim();
+    addDebug(`Recognition created — expecting "${expected}"`);
+
+    // Fuzzy match: check if any word in transcript is close enough
+    const isMatch = (text: string): boolean => {
+      const t = text.toLowerCase().trim();
+      if (!t) return false;
+      // Exact substring
+      if (t.includes(expected)) return true;
+      // Check individual words
+      const words = t.split(/\s+/);
+      for (const w of words) {
+        if (w === expected) return true;
+        // Allow off-by-one character (simple edit distance 1)
+        if (expected.length > 2 && w.length > 2) {
+          if (Math.abs(w.length - expected.length) <= 1) {
+            let diff = 0;
+            const longer = w.length >= expected.length ? w : expected;
+            const shorter = w.length >= expected.length ? expected : w;
+            let si = 0;
+            for (let li = 0; li < longer.length && si < shorter.length; li++) {
+              if (longer[li] !== shorter[si]) { diff++; } else { si++; }
+            }
+            diff += shorter.length - si;
+            if (diff <= 1) return true;
+          }
+        }
+        // Starts-with for short words
+        if (expected.length >= 3 && w.startsWith(expected.substring(0, 3))) return true;
+      }
+      return false;
+    };
 
     recognition.onresult = (event: any) => {
-      // Collect all transcripts across all results
       let full = "";
       for (let i = 0; i < event.results.length; i++) {
         full += event.results[i][0].transcript;
       }
       setTranscript(full);
 
-      // Check the latest result for a final match
       const latest = event.results[event.results.length - 1];
-      if (latest?.isFinal && !settled) {
-        let match = false;
-        // Check all alternatives
-        for (let i = 0; i < latest.length; i++) {
-          if (latest[i].transcript.toLowerCase().includes(expectedWord.toLowerCase())) {
-            match = true;
-            break;
+      const isFinal = latest?.isFinal;
+      addDebug(`onresult: "${full.trim()}" (final=${isFinal})`);
+
+      if (settled) return;
+
+      // Check ALL results, both interim and final, across all alternatives
+      for (let i = 0; i < event.results.length; i++) {
+        for (let j = 0; j < event.results[i].length; j++) {
+          const alt = event.results[i][j].transcript;
+          if (isMatch(alt)) {
+            addDebug(`MATCH via alt[${i}][${j}]: "${alt}"`);
+            settled = true;
+            stopRecognition();
+            setWordState("matched");
+            setTimeout(() => advance("matched"), 1200);
+            return;
           }
         }
-        if (!match) match = full.toLowerCase().includes(expectedWord.toLowerCase());
-
-        if (match) {
-          settled = true;
-          stopRecognition();
-          setWordState("matched");
-          setTimeout(() => advance("matched"), 1200);
-        }
-        // If not matched, keep listening until timeout
+      }
+      // Also check full accumulated transcript
+      if (isMatch(full)) {
+        addDebug(`MATCH via full transcript: "${full}"`);
+        settled = true;
+        stopRecognition();
+        setWordState("matched");
+        setTimeout(() => advance("matched"), 1200);
       }
     };
 
     recognition.onerror = (e: any) => {
+      addDebug(`onerror: ${e.error} (settled=${settled})`);
       if (settled) return;
-      // Only treat "not-allowed" (permission denied) as fatal.
-      // All other errors (no-speech, aborted, audio-capture, network,
-      // service-not-available) are transient — onend will restart.
       if (e.error === "not-allowed") {
         settled = true; stopRecognition(); setWordState("missed");
       }
     };
 
     recognition.onend = () => {
+      addDebug(`onend fired (settled=${settled})`);
       if (settled) return;
-      // Chrome fires onend even in continuous mode after silence.
-      // NEVER mark missed here — only the hard timeout should do that.
-      // Always restart, no retry limit.
       setTimeout(() => {
         if (settled) return;
-        try { recognition.start(); } catch {
-          // Fresh instance if old one is dead
+        try {
+          recognition.start();
+          addDebug("restarted recognition (same instance)");
+        } catch {
           try {
             const Fresh = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-            if (!Fresh) return; // hard timeout will handle it
+            if (!Fresh) return;
             const fresh = new Fresh();
             fresh.continuous = true;
             fresh.interimResults = true;
@@ -340,47 +392,68 @@ export default function CommunicationPage() {
             fresh.onend = recognition.onend;
             recognitionRef.current = fresh;
             fresh.start();
-          } catch { /* hard timeout will handle it */ }
+            addDebug("restarted recognition (fresh instance)");
+          } catch (err) {
+            addDebug(`restart FAILED: ${err instanceof Error ? err.message : String(err)}`);
+          }
         }
       }, 250);
     };
 
-    // Start recognition — retry with increasing delay if needed
+    recognition.onstart = () => {
+      addDebug("onstart: recognition active");
+    };
+
+    recognition.onaudiostart = () => {
+      addDebug("onaudiostart: mic audio flowing");
+    };
+
+    recognition.onsoundstart = () => {
+      addDebug("onsoundstart: sound detected");
+    };
+
+    recognition.onspeechstart = () => {
+      addDebug("onspeechstart: speech detected");
+    };
+
+    // Start recognition
     const tryStart = (delay: number, attempt: number) => {
       setTimeout(() => {
         if (settled) return;
-        try { recognition.start(); } catch {
+        try {
+          recognition.start();
+          addDebug(`start() OK (attempt ${attempt}, delay ${delay}ms)`);
+        } catch (err) {
+          addDebug(`start() FAILED attempt ${attempt}: ${err instanceof Error ? err.message : String(err)}`);
           if (attempt < 3) tryStart(delay + 300, attempt + 1);
-          // else hard timeout will handle it
         }
       }, delay);
     };
     tryStart(300, 0);
 
-    // Hard timeout: ONLY way to mark missed — real wall-clock 8 seconds
+    // Hard timeout: ONLY way to mark missed — 10 seconds
     timerRef.current = setTimeout(() => {
-      if (!settled) { settled = true; stopRecognition(); setWordState("missed"); }
-    }, 8000);
-  }, [advance, stopRecognition]);
+      if (!settled) {
+        addDebug("HARD TIMEOUT (10s) — marking missed");
+        settled = true; stopRecognition(); setWordState("missed");
+      }
+    }, 10000);
+  }, [advance, stopRecognition, addDebug]);
 
   const playAndListen = useCallback(async () => {
     const word = words[currentIdx];
     if (!word) return;
     setWordState("playing");
     setTranscript("");
+    setDebugLog([]);
+    addDebug(`Playing word: "${word.text}"`);
     await speakWord(word.text);
-    // Release mic stream BEFORE starting recognition — getUserMedia + AudioContext
-    // can monopolize mic hardware on some Chrome builds, preventing SpeechRecognition
-    // from receiving any audio.
-    if (micStream) {
-      micStream.getTracks().forEach((t) => t.stop());
-      setMicStream(null);
-    }
-    // Wait for audio hardware to fully release
-    await new Promise((r) => setTimeout(r, 500));
+    // Acquire mic for visualizer (SpeechRecognition uses its own internal mic)
+    if (!micStream) await acquireMic();
+    await new Promise((r) => setTimeout(r, 300));
     setWordState("listening");
     startListening(word.text);
-  }, [currentIdx, words, speakWord, startListening, micStream]);
+  }, [currentIdx, words, speakWord, startListening, micStream, acquireMic, addDebug]);
 
   // Start the test
   const beginTest = useCallback(async () => {
@@ -568,20 +641,8 @@ export default function CommunicationPage() {
                   Your turn! Say &ldquo;{word.text}&rdquo;
                 </p>
 
-                {/* Animated listening visualizer — CSS driven so SpeechRecognition has exclusive mic access */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, height: 48, marginBottom: 12 }}>
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <div
-                      key={i}
-                      style={{
-                        width: 8,
-                        borderRadius: 4,
-                        background: "#e53e3e",
-                        animation: `vizBar 0.5s ease-in-out ${i * 0.08}s infinite alternate`,
-                      }}
-                    />
-                  ))}
-                </div>
+                {/* Real mic visualizer using getUserMedia + AnalyserNode */}
+                <MicVisualizer stream={micStream} />
 
                 <div style={{
                   display: "inline-flex", alignItems: "center", gap: 8,
@@ -668,6 +729,23 @@ export default function CommunicationPage() {
                 }} />
               ))}
             </div>
+
+            {/* DEBUG PANEL — temporary diagnostic */}
+            {debugLog.length > 0 && (
+              <div style={{
+                marginTop: 16, padding: "10px 14px", borderRadius: 10,
+                background: "#1a1a2e", color: "#00ff88", fontSize: "0.7rem",
+                fontFamily: "monospace", maxHeight: 200, overflowY: "auto",
+                textAlign: "left", border: "2px solid #333",
+              }}>
+                <div style={{ fontWeight: 700, color: "#ffaa00", marginBottom: 6, fontSize: "0.75rem" }}>
+                  DEBUG — SpeechRecognition Events
+                </div>
+                {debugLog.map((line, i) => (
+                  <div key={i} style={{ padding: "1px 0", opacity: i === 0 ? 1 : 0.7 }}>{line}</div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
