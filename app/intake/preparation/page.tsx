@@ -76,8 +76,8 @@ export default function PreparationPage() {
   // Debounce status text to prevent flickering
   const hasKeypoints = keypoints && keypoints.length >= 34;
   const statusCategory = !hasKeypoints ? "no_keypoints"
-    : consecutiveHits >= 6 ? "almost"
-    : (actionResult?.confidence || 0) > 0.3 ? "closer"
+    : consecutiveHits >= 4 ? "almost"
+    : (actionResult?.confidence || 0) > 0.2 ? "closer"
     : "looking";
 
   useEffect(() => {
@@ -99,7 +99,7 @@ export default function PreparationPage() {
 
   // Debounce hits display — update only on significant change
   useEffect(() => {
-    if (consecutiveHits === 0 || consecutiveHits >= 8 || Math.abs(consecutiveHits - displayHits) >= 2) {
+    if (consecutiveHits === 0 || consecutiveHits >= 6 || Math.abs(consecutiveHits - displayHits) >= 2) {
       setDisplayHits(consecutiveHits);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -450,10 +450,10 @@ export default function PreparationPage() {
                   </div>
                 )}
 
-                {/* 8-dot frame counter (matches REQUIRED_CONSECUTIVE = 8) */}
+                {/* 6-dot frame counter (matches REQUIRED_CONSECUTIVE = 6) */}
                 {actionPhase === "detecting" && (
                   <div style={{ display: "flex", gap: 3, justifyContent: "center", marginBottom: 8 }}>
-                    {Array.from({ length: 8 }, (_, i) => (
+                    {Array.from({ length: 6 }, (_, i) => (
                       <div key={i} style={{
                         width: 14, height: 14, borderRadius: "50%",
                         background: i < displayHits ? "var(--sage-500)" : "var(--bg-elevated)",

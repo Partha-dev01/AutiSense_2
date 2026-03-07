@@ -138,13 +138,13 @@ function detectClap(
     if (d < threshold) return { hit: true, proximity: Math.max(0, 1 - d / threshold) };
 
     // Also check approach motion: wrists getting closer over recent frames
-    if (history.length >= 3) {
-      const prev = history[history.length - 3];
+    if (history.length >= 2) {
+      const prev = history[history.length - 2];
       if (prev) {
         const prevD = dist(kp(prev, L_WRIST), kp(prev, R_WRIST));
         const delta = prevD - d; // positive = hands approaching
-        if (delta > 0.08 * scale && d < 0.8 * scale) {
-          return { hit: true, proximity: Math.min(1, delta / (0.15 * scale)) };
+        if (delta > 0.04 * scale && d < scale) {
+          return { hit: true, proximity: Math.min(1, delta / (0.1 * scale)) };
         }
       }
     }
@@ -156,7 +156,7 @@ function detectClap(
   const midX = (kps[L_SHOULDER * 2] + kps[R_SHOULDER * 2]) / 2;
   const wristX = kps[wristIdx * 2];
   const dCenter = Math.abs(wristX - midX);
-  const centerThreshold = 0.15 * scale;
+  const centerThreshold = 0.25 * scale;
   if (dCenter < centerThreshold) {
     return { hit: true, proximity: Math.max(0, 1 - dCenter / centerThreshold) };
   }
@@ -294,7 +294,7 @@ export class ActionTracker {
 
     const result = detectAction(keypoints, confidence, action, this.history);
 
-    if (result.detected && result.confidence > 0.3) {
+    if (result.detected) {
       this.consecutiveHits++;
     } else {
       this.consecutiveHits = Math.max(0, this.consecutiveHits - 1);
