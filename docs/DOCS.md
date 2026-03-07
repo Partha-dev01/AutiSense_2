@@ -1087,31 +1087,45 @@ A complete kids-facing dashboard with bottom tab navigation, daily games, AI cha
 
 **Commits:** `6c36e99`, `78bc739`, `6e1500f`, `9787c2f`, `1788d1f`, `d22c272`
 
-### v2.7.0 — 2026-03-07 (Detection UI + Face Sensitivity + Body Noise Gate)
+### v2.7.0 — 2026-03-07 (Detection UI, Face Pipeline Fix, Body Noise Gate)
 
-**UI — Detection page layout cleanup:**
-- Wrapped camera feed, elapsed timer, stop button, and backend info in a single white card container
+**UI — Detection page layout overhaul:**
+- Wrapped camera feed, elapsed timer, stop button, and backend info in a white card container
 - Moved "Backend: webgpu · Latency: XXms" from results panel to below stop button inside camera card
-- Removed `isModelLoaded`/`backend` props from `DetectorResultsPanel` (no longer needed)
-- Card width matches camera, height aligns naturally with content
+- Removed `isModelLoaded`/`backend` props from `DetectorResultsPanel`
+- Camera column: fixed 480px on desktop (previously 420px, briefly 1fr 1fr)
+- Overall layout max-width increased from 1200px to 1400px for wider body/face cards
+- Body Behavior + Face Analysis cards stack vertically on mobile (`<768px`), side-by-side on desktop (new `.detector-behavior-grid` CSS class)
+- Face Analysis shows "Warming up face model..." text during the ~6s Face-TCN ring buffer warmup (64 frames × 3 skip rate)
 
-**Face Analysis — Emotion-aware probability rebalancing:**
-- **Root cause**: Face-TCN expects 64-dim features (FER+ emotions + MediaPipe blendshapes + landmarks), but MediaPipe is not integrated at inference — blendshapes (52) and landmarks (956) are passed as all-zeros. This caused 56/64 features to be zero/garbage, making the model default to ~88% flat_affect regardless of actual expression.
-- **Fix**: Added `rebalanceFaceProbs()` post-processor in `MultimodalOrchestrator` that uses the valid FER+ emotion signal to correct Face-TCN outputs:
+**Face Pipeline — Critical crash fix + sensitivity rebalancing:**
+- **Bug 1 — Face never goes live**: In "both" mode, `bodyResult!.bbox!` crashed silently in the Web Worker when YOLO didn't detect a person (bbox undefined). The entire face pipeline would fail and never recover. **Fix**: Guard `bodyResult?.bbox` with fallback to center-of-frame extraction when no person bbox is available.
+- **Bug 2 — Face ROI null at frame edges**: `FaceDetector.extractFaceROI()` returned `null` when the computed face region had negative coordinates (person partially off-screen). **Fix**: Clamp coordinates to frame bounds instead of rejecting.
+- **Bug 3 — 88% flat_affect regardless of expression**: Face-TCN expects 64-dim features from FER+ emotions (8) + MediaPipe blendshapes (52) + landmarks (956). But **MediaPipe is not integrated at inference** — blendshapes and landmarks are passed as all-zeros (`new Float32Array(52)`, `new Float32Array(956)` in `MultimodalOrchestrator.processFaceROI()`). This means 56/64 features are zero/garbage, causing the model to always output ~88% flat_affect.
+- **Fix**: Added `rebalanceFaceProbs()` post-processor that uses FER+ emotions (the only valid input) to correct Face-TCN outputs:
   - Temperature scaling (T=0.5) sharpens the softmax distribution
-  - If FER+ detects non-neutral emotion > 15%, transfers probability from flat_affect to typical_expression
-  - Caps flat_affect at 60% to prevent overwhelming display
+  - If FER+ detects non-neutral emotion > 15%, transfers probability from flat_affect → typical_expression
+  - Caps flat_affect at 60% to prevent display domination
   - Re-normalizes to sum to 1.0
+- Always uses "both" modality (body + face) on all devices — previously mobile used face-only mode with no COCO keypoints visible
 
 **Body Analysis — Camera shake noise gate:**
 - Added 5% noise floor: body behavior classes below 5% probability are zeroed and redistributed to non_autistic
 - Eliminates false ~12% hand_flapping from minor camera shake when sitting still
 
+**Preparation page:**
+- Removed "Show Debug" button and all associated debug state/imports from `/intake/preparation`
+
 **Files changed:**
-- `app/components/DetectorResultsPanel.tsx` — removed backend info, cleaned props
-- `app/kid-dashboard/detection/page.tsx` — camera card wrapper, backend info placement
+- `app/components/DetectorResultsPanel.tsx` — removed backend info, cleaned props, responsive grid, face warmup text
+- `app/kid-dashboard/detection/page.tsx` — camera card wrapper, backend info, always "both" modality
 - `app/intake/video-capture/page.tsx` — updated DetectorResultsPanel props
-- `app/lib/inference/MultimodalOrchestrator.ts` — `rebalanceFaceProbs()`, body noise gate
+- `app/intake/preparation/page.tsx` — removed debug panel, state, and imports
+- `app/lib/inference/MultimodalOrchestrator.ts` — null bbox guard, center-of-frame fallback, `rebalanceFaceProbs()`, body noise gate
+- `app/lib/inference/FaceDetector.ts` — clamp face ROI bounds instead of null return
+- `app/globals.css` — camera 480px, max-width 1400px, `.detector-behavior-grid` responsive class
+
+**Commits:** `b69610d`, `1d02b02`, `453f898`
 
 ### v2.6.1–v2.6.4 — 2026-03-07 (Action Detection — Complete Overhaul)
 
