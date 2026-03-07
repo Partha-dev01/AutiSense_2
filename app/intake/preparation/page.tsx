@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { addBiomarker } from "../../lib/db/biomarker.repository";
 import { getCurrentSessionId } from "../../lib/session/currentSession";
 import { useActionCamera } from "../../hooks/useActionCamera";
-import { ACTION_META, type ActionId } from "../../lib/actions/actionDetector";
+import { ACTION_META, type ActionId, getDebugLog } from "../../lib/actions/actionDetector";
 import SkipStageDialog from "../../components/SkipStageDialog";
 
 const STEPS = [
@@ -40,6 +40,8 @@ export default function PreparationPage() {
   const [results, setResults] = useState<Map<number, boolean>>(new Map());
   const [timeoutSeconds, setTimeoutSeconds] = useState(Math.ceil(ACTION_TIMEOUT_MS / 1000));
   const [forceComplete, setForceComplete] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugLines, setDebugLines] = useState<string[]>([]);
 
   const [displayStatus, setDisplayStatus] = useState<string>("looking");
   const [displayHits, setDisplayHits] = useState(0);
@@ -73,12 +75,14 @@ export default function PreparationPage() {
     if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
   }, []);
 
-  // Debounce status text to prevent flickering
+  // Debounce status text to prevent flickering — sticky: only upgrade, never downgrade quickly
   const hasKeypoints = keypoints && keypoints.length >= 34;
   const statusCategory = !hasKeypoints ? "no_keypoints"
-    : consecutiveHits >= 5 ? "almost"
-    : (actionResult?.confidence || 0) > 0.1 ? "closer"
+    : consecutiveHits >= 3 ? "almost"
+    : (actionResult?.confidence || 0) > 0.08 ? "closer"
     : "looking";
+
+  const statusRank = (s: string) => s === "almost" ? 3 : s === "closer" ? 2 : s === "looking" ? 1 : 0;
 
   useEffect(() => {
     if (actionPhase !== "detecting") {
@@ -88,18 +92,27 @@ export default function PreparationPage() {
     }
     if (statusCategory === stableStatusRef.current) return;
 
+    // Upgrade immediately, downgrade with delay
+    const isUpgrade = statusRank(statusCategory) > statusRank(stableStatusRef.current);
+
     if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
-    statusTimerRef.current = setTimeout(() => {
+    if (isUpgrade) {
       stableStatusRef.current = statusCategory;
       setDisplayStatus(statusCategory);
-    }, 500);
+    } else {
+      statusTimerRef.current = setTimeout(() => {
+        stableStatusRef.current = statusCategory;
+        setDisplayStatus(statusCategory);
+      }, 1200); // slow downgrade
+    }
 
     return () => { if (statusTimerRef.current) { clearTimeout(statusTimerRef.current); statusTimerRef.current = null; } };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusCategory, actionPhase]);
 
   // Debounce hits display — update only on significant change
   useEffect(() => {
-    if (consecutiveHits === 0 || consecutiveHits >= 8 || Math.abs(consecutiveHits - displayHits) >= 2) {
+    if (consecutiveHits === 0 || consecutiveHits >= 5 || Math.abs(consecutiveHits - displayHits) >= 1) {
       setDisplayHits(consecutiveHits);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -230,6 +243,16 @@ export default function PreparationPage() {
       clearTimers();
     };
   }, [clearTimers]);
+
+  // Debug log poller
+  useEffect(() => {
+    if (!showDebug || actionPhase !== "detecting") return;
+    const iv = setInterval(() => {
+      const log = getDebugLog();
+      setDebugLines(log.slice(-15).map((e) => e.detail));
+    }, 300);
+    return () => clearInterval(iv);
+  }, [showDebug, actionPhase]);
 
   const handleSkipStage = useCallback(async () => {
     clearTimers();
@@ -453,7 +476,7 @@ export default function PreparationPage() {
                 {/* 6-dot frame counter (matches REQUIRED_CONSECUTIVE = 6) */}
                 {actionPhase === "detecting" && (
                   <div style={{ display: "flex", gap: 3, justifyContent: "center", marginBottom: 8 }}>
-                    {Array.from({ length: 8 }, (_, i) => (
+                    {Array.from({ length: 5 }, (_, i) => (
                       <div key={i} style={{
                         width: 14, height: 14, borderRadius: "50%",
                         background: i < displayHits ? "var(--sage-500)" : "var(--bg-elevated)",
@@ -515,6 +538,39 @@ export default function PreparationPage() {
                   </div>
                 )}
               </>
+            )}
+
+            {/* Debug panel */}
+            {phase === "active" && (
+              <div style={{ marginTop: 12, textAlign: "center" }}>
+                <button
+                  onClick={() => setShowDebug((d) => !d)}
+                  style={{
+                    background: "none", border: "1px dashed var(--border)", borderRadius: 6,
+                    padding: "4px 12px", fontSize: "0.7rem", color: "var(--text-muted)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {showDebug ? "Hide Debug" : "Show Debug"}
+                </button>
+                {showDebug && (
+                  <div style={{
+                    marginTop: 8, textAlign: "left", background: "var(--bg-secondary)",
+                    border: "1px solid var(--border)", borderRadius: 8,
+                    padding: "10px 12px", maxHeight: 200, overflowY: "auto",
+                    fontFamily: "monospace", fontSize: "0.65rem", lineHeight: 1.5,
+                    color: "var(--text-secondary)",
+                  }}>
+                    <div style={{ marginBottom: 4, fontWeight: 700 }}>
+                      Action: {ACTIONS[currentIdx]} | Phase: {actionPhase} | Hits: {consecutiveHits}/5 | Conf: {(actionResult?.confidence || 0).toFixed(2)}
+                    </div>
+                    {debugLines.map((line, i) => (
+                      <div key={i} style={{ opacity: 0.6 + (i / debugLines.length) * 0.4 }}>{line}</div>
+                    ))}
+                    {debugLines.length === 0 && <div>Waiting for frames...</div>}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Timeout */}
