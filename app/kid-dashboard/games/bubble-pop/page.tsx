@@ -17,11 +17,11 @@ interface Bubble {
   y: number;
   size: number;
   color: string;
-  popped: boolean;
-  shaking: boolean;
 }
 
 const POOL = [..."ABCDEFGHIJ", ..."0123456789"];
+const GAME_DURATION = 30; // seconds
+const NICE_WORDS = ["Nice!", "Great!", "Awesome!", "Super!", "Yes!"];
 
 const BUBBLE_COLORS = [
   "var(--sage-200)", "var(--sage-300)", "var(--sky-200)", "var(--sky-300)",
@@ -30,6 +30,41 @@ const BUBBLE_COLORS = [
 
 function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function spawnLayout(target: string, count: number, idStart: number): Bubble[] {
+  const bubbles: Bubble[] = [];
+  const targetIdx = Math.floor(Math.random() * count);
+  const occupied: { x: number; y: number }[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const isTarget = i === targetIdx;
+    let label = isTarget ? target : pickRandom(POOL);
+    while (!isTarget && label === target) label = pickRandom(POOL);
+
+    const size = 58 + Math.floor(Math.random() * 18);
+    let x = 0, y = 0;
+    for (let attempt = 0; attempt < 30; attempt++) {
+      x = 8 + Math.random() * 72;
+      y = 8 + Math.random() * 72;
+      const tooClose = occupied.some((o) => {
+        const dx = x - o.x;
+        const dy = y - o.y;
+        return Math.sqrt(dx * dx + dy * dy) < 18;
+      });
+      if (!tooClose) break;
+    }
+    occupied.push({ x, y });
+
+    bubbles.push({
+      id: idStart + i,
+      label, x, y, size,
+      color: pickRandom(BUBBLE_COLORS),
+    });
+  }
+  // Guarantee at least one target
+  if (!bubbles.some((b) => b.label === target)) bubbles[0].label = target;
+  return bubbles;
 }
 
 const statStyle = {
@@ -46,15 +81,17 @@ export default function BubblePopPage() {
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [target, setTarget] = useState("");
   const [score, setScore] = useState(0);
-  const [attempts, setAttempts] = useState(0);
-  const [totalPops, setTotalPops] = useState(0);
-  const [poppedCount, setPoppedCount] = useState(0);
-  const [startTime, setStartTime] = useState(0);
-  const [elapsed, setElapsed] = useState(0);
-  const nextIdRef = useRef(0);
-  const [speedMult, setSpeedMult] = useState(1);
-  const [maxBubbles, setMaxBubbles] = useState(4);
+  const [misses, setMisses] = useState(0);
+  const [rounds, setRounds] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [shakingId, setShakingId] = useState<number | null>(null);
+  const [poppingId, setPoppingId] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
+  const nextIdRef = useRef(0);
+  const bubbleCountRef = useRef(4);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gameActiveRef = useRef(false);
 
   useEffect(() => {
     const s = (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
@@ -66,182 +103,143 @@ export default function BubblePopPage() {
     if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
   }, [theme]);
 
-  const pickNewTarget = useCallback(() => {
+  const startRound = useCallback(() => {
     const t = pickRandom(POOL);
     setTarget(t);
-    return t;
+    const count = bubbleCountRef.current;
+    const id = nextIdRef.current;
+    setBubbles(spawnLayout(t, count, id));
+    nextIdRef.current = id + count;
+    setFeedback(null);
+    setPoppingId(null);
+    setShakingId(null);
   }, []);
-
-  const spawnBubble = useCallback(
-    (currentTarget: string, idStart: number, count: number, existing: Bubble[] = []): Bubble[] => {
-      const result: Bubble[] = [];
-      const targetIdx = Math.floor(Math.random() * count);
-      // Collect occupied positions (existing active + newly spawned)
-      const occupied = existing.filter((b) => !b.popped).map((b) => ({ x: b.x, y: b.y, size: b.size }));
-
-      for (let i = 0; i < count; i++) {
-        const isTarget = i === targetIdx;
-        let label = isTarget ? currentTarget : pickRandom(POOL);
-        while (!isTarget && label === currentTarget) label = pickRandom(POOL);
-
-        const size = 56 + Math.floor(Math.random() * 20);
-        // Find a non-overlapping position (try up to 20 times)
-        let x = 0, y = 0;
-        for (let attempt = 0; attempt < 20; attempt++) {
-          x = 5 + Math.random() * 78; // % from left (leave room for bubble width)
-          y = 5 + Math.random() * 78; // % from top
-          const tooClose = occupied.some((o) => {
-            const dx = x - o.x;
-            const dy = y - o.y;
-            return Math.sqrt(dx * dx + dy * dy) < 16; // min ~16% apart
-          });
-          if (!tooClose) break;
-        }
-        occupied.push({ x, y, size });
-
-        result.push({
-          id: idStart + i,
-          label,
-          x, y, size,
-          color: pickRandom(BUBBLE_COLORS),
-          popped: false,
-          shaking: false,
-        });
-      }
-      return result;
-    },
-    [],
-  );
 
   const startGame = useCallback(() => {
     const childId =
       (typeof window !== "undefined" && localStorage.getItem("autisense-active-child-id")) || "default";
     const config = getDifficulty("bubble-pop", childId);
-    const neededPops = config.itemCount * 3;
-
-    setSpeedMult(config.speed);
-    setMaxBubbles(Math.min(2 + config.level, 6));
-    setTotalPops(neededPops);
-    setPoppedCount(0);
+    bubbleCountRef.current = Math.min(3 + config.level, 7);
     setScore(0);
-    setAttempts(0);
-    setStartTime(Date.now());
-    setElapsed(0);
+    setMisses(0);
+    setRounds(0);
+    setTimeLeft(GAME_DURATION);
     setSaved(false);
-
+    nextIdRef.current = 0;
+    gameActiveRef.current = true;
+    setScreen("play");
+    // Start first round
     const t = pickRandom(POOL);
     setTarget(t);
+    setBubbles(spawnLayout(t, bubbleCountRef.current, 0));
+    nextIdRef.current = bubbleCountRef.current;
+    setFeedback(null);
+    setPoppingId(null);
+    setShakingId(null);
+  }, []);
 
-    const initialCount = Math.min(3 + config.level, 6);
-    nextIdRef.current = 0;
-    const initial = spawnBubble(t, 0, initialCount, []);
-    if (!initial.some((b) => b.label === t)) initial[0].label = t;
-    setBubbles(initial);
-    nextIdRef.current = initialCount;
-    setScreen("play");
-  }, [spawnBubble]);
-
-  // Elapsed timer
-  useEffect(() => {
-    if (screen !== "play") return;
-    const iv = setInterval(() => setElapsed(Date.now() - startTime), 500);
-    return () => clearInterval(iv);
-  }, [screen, startTime]);
-
-  // Spawn new bubbles periodically — ensure at least 1 is always visible
+  // Countdown timer
   useEffect(() => {
     if (screen !== "play") return;
     const iv = setInterval(() => {
-      setBubbles((prev) => {
-        const active = prev.filter((b) => !b.popped);
-        if (active.length >= maxBubbles) return prev;
-        const count = active.length === 0
-          ? Math.min(3, maxBubbles)
-          : Math.min(2, maxBubbles - active.length);
-        const id = nextIdRef.current;
-        const spawned = spawnBubble(target, id, count, active);
-        nextIdRef.current = id + count;
-        return [...active, ...spawned];
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          gameActiveRef.current = false;
+          setScreen("result");
+          return 0;
+        }
+        return prev - 1;
       });
-    }, 2000);
-    return () => clearInterval(iv);
-  }, [screen, target, maxBubbles, spawnBubble]);
-
-  // Clean up popped bubbles after pop animation finishes
-  useEffect(() => {
-    if (screen !== "play") return;
-    const iv = setInterval(() => {
-      setBubbles((prev) => prev.filter((b) => !b.popped));
-    }, 600);
+    }, 1000);
     return () => clearInterval(iv);
   }, [screen]);
 
-  // Save results on result screen
+  // Save results
   useEffect(() => {
     if (screen !== "result" || saved) return;
     setSaved(true);
     const childId =
       (typeof window !== "undefined" && localStorage.getItem("autisense-active-child-id")) || "default";
-    const fs = attempts > 0 ? Math.round((score / attempts) * 100) : 0;
+    const total = score + misses;
+    const accuracy = total > 0 ? Math.round((score / total) * 100) : 0;
     const config = getDifficulty("bubble-pop", childId);
-    saveDifficulty("bubble-pop", childId, fs);
-    addGameActivity(childId, "bubble-pop", fs, Math.floor(elapsed / 1000), config.level);
+    saveDifficulty("bubble-pop", childId, accuracy);
+    addGameActivity(childId, "bubble-pop", accuracy, GAME_DURATION, config.level);
     updateStreak(childId);
-  }, [screen, saved, score, attempts, elapsed]);
+  }, [screen, saved, score, misses]);
 
-  const handleBubbleTap = (bubble: Bubble) => {
-    if (bubble.popped) return;
+  const handleBubbleTap = useCallback((bubble: Bubble) => {
+    if (!gameActiveRef.current || feedback || poppingId !== null) return;
 
     if (bubble.label === target) {
-      setBubbles((prev) => prev.map((b) => (b.id === bubble.id ? { ...b, popped: true } : b)));
-      const newPopped = poppedCount + 1;
-      setPoppedCount(newPopped);
+      // Correct! Show pop animation, then "Nice!", then new round
+      setPoppingId(bubble.id);
       setScore((s) => s + 1);
-      setAttempts((a) => a + 1);
+      setRounds((r) => r + 1);
 
-      if (newPopped >= totalPops) {
-        setScreen("result");
-      } else if (newPopped % 3 === 0) {
-        pickNewTarget();
-      }
-    } else {
-      setAttempts((a) => a + 1);
-      setBubbles((prev) => prev.map((b) => (b.id === bubble.id ? { ...b, shaking: true } : b)));
+      // After pop animation (300ms), show feedback
       setTimeout(() => {
-        setBubbles((prev) => prev.map((b) => (b.id === bubble.id ? { ...b, shaking: false } : b)));
-      }, 500);
+        setPoppingId(null);
+        setFeedback(pickRandom(NICE_WORDS));
+        // After feedback (600ms), spawn new round
+        feedbackTimerRef.current = setTimeout(() => {
+          if (gameActiveRef.current) startRound();
+        }, 600);
+      }, 300);
+    } else {
+      // Wrong — shake it
+      setMisses((m) => m + 1);
+      setShakingId(bubble.id);
+      setTimeout(() => setShakingId(null), 500);
     }
-  };
+  }, [target, feedback, poppingId, startRound]);
 
-  const finalScore = attempts > 0 ? Math.round((score / attempts) * 100) : 0;
+  const totalAttempts = score + misses;
+  const accuracy = totalAttempts > 0 ? Math.round((score / totalAttempts) * 100) : 0;
+
+  // Cleanup feedback timer on unmount
+  useEffect(() => {
+    return () => {
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    };
+  }, []);
 
   return (
     <div className="page">
       <style>{`
         @keyframes bubbleIdle {
-          0%, 100% { transform: translateY(0) scale(1); }
-          33% { transform: translateY(-6px) scale(1.03); }
-          66% { transform: translateY(4px) scale(0.97); }
+          0%, 100% { transform: translate(-50%,-50%) scale(1); }
+          33% { transform: translate(-50%,-50%) translateY(-5px) scale(1.03); }
+          66% { transform: translate(-50%,-50%) translateY(3px) scale(0.97); }
         }
         @keyframes bubbleAppear {
-          0% { transform: scale(0); opacity: 0; }
-          60% { transform: scale(1.15); opacity: 1; }
-          100% { transform: scale(1); opacity: 1; }
+          0% { transform: translate(-50%,-50%) scale(0); opacity: 0; }
+          60% { transform: translate(-50%,-50%) scale(1.12); opacity: 1; }
+          100% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
         }
-        @keyframes popAnim {
-          0% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.5); opacity: 0.4; }
-          100% { transform: scale(0); opacity: 0; }
+        @keyframes popBurst {
+          0% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+          50% { transform: translate(-50%,-50%) scale(1.6); opacity: 0.3; }
+          100% { transform: translate(-50%,-50%) scale(0); opacity: 0; }
         }
         @keyframes gentleShake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-5px); }
-          50% { transform: translateX(5px); }
-          75% { transform: translateX(-3px); }
+          0%, 100% { transform: translate(-50%,-50%) translateX(0); }
+          25% { transform: translate(-50%,-50%) translateX(-6px); }
+          50% { transform: translate(-50%,-50%) translateX(6px); }
+          75% { transform: translate(-50%,-50%) translateX(-4px); }
+        }
+        @keyframes feedbackPop {
+          0% { transform: scale(0); opacity: 0; }
+          50% { transform: scale(1.2); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
         }
         @keyframes targetPulse {
           0%, 100% { box-shadow: 0 0 0 0 var(--sage-200); }
           50% { box-shadow: 0 0 0 8px transparent; }
+        }
+        @keyframes timerUrgent {
+          0%, 100% { color: var(--peach-300); }
+          50% { color: var(--text-secondary); }
         }
       `}</style>
 
@@ -271,7 +269,7 @@ export default function BubblePopPage() {
               Bubble <em>Pop</em>
             </h1>
             <p className="subtitle">
-              Pop the bubbles with the right letter or number. Be quick but stay calm!
+              Pop the right bubble as fast as you can! You have 30 seconds — how many rounds can you clear?
             </p>
             <button onClick={startGame} className="btn btn-primary btn-full" style={{ maxWidth: 340 }}>
               Start Game
@@ -281,30 +279,69 @@ export default function BubblePopPage() {
 
         {screen === "play" && (
           <div className="fade fade-2" style={{ textAlign: "center" }}>
+            {/* Status bar */}
             <div style={{
-              display: "flex", justifyContent: "space-between", marginBottom: 12,
+              display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12,
               fontSize: "0.9rem", color: "var(--text-secondary)", fontWeight: 600,
             }}>
-              <span>{poppedCount} / {totalPops}</span>
-              <span>Score: {score}</span>
-              <span>{Math.floor(elapsed / 1000)}s</span>
+              <span>Score: <strong style={{ color: "var(--sage-500)", fontSize: "1.1rem" }}>{score}</strong></span>
+              <span>Round {rounds + 1}</span>
+              <span style={{
+                fontWeight: 700, fontSize: "1.1rem",
+                color: timeLeft <= 5 ? "var(--peach-300)" : "var(--text-secondary)",
+                animation: timeLeft <= 5 ? "timerUrgent 0.6s ease-in-out infinite" : "none",
+              }}>
+                {timeLeft}s
+              </span>
             </div>
 
+            {/* Timer bar */}
             <div style={{
-              fontFamily: "'Fredoka',sans-serif", fontSize: "1.5rem", fontWeight: 600,
-              color: "var(--text-primary)", marginBottom: 16, padding: "14px 24px",
+              height: 6, background: "var(--sage-100)", borderRadius: 3, overflow: "hidden", marginBottom: 14,
+            }}>
+              <div style={{
+                height: "100%", width: `${(timeLeft / GAME_DURATION) * 100}%`,
+                background: timeLeft <= 5 ? "var(--peach-300)" : "var(--sage-500)",
+                borderRadius: 3, transition: "width 1s linear, background 0.3s",
+              }} />
+            </div>
+
+            {/* Target prompt */}
+            <div style={{
+              fontFamily: "'Fredoka',sans-serif", fontSize: "1.4rem", fontWeight: 600,
+              color: "var(--text-primary)", marginBottom: 14, padding: "12px 20px",
               background: "var(--sage-50)", borderRadius: "var(--r-lg)", border: "3px solid var(--sage-300)",
               animation: "targetPulse 2s ease-in-out infinite",
             }}>
-              Pop the <span style={{ color: "var(--sage-500)", fontSize: "2.8rem", fontWeight: 700, lineHeight: 1 }}>{target}</span>!
+              Find <span style={{ color: "var(--sage-500)", fontSize: "2.6rem", fontWeight: 700, lineHeight: 1 }}>{target}</span>
             </div>
 
+            {/* Play area */}
             <div style={{
-              position: "relative", width: "100%", height: 440,
+              position: "relative", width: "100%", height: 400,
               borderRadius: "var(--r-lg)", border: "2px solid var(--border)",
               background: "var(--card)", overflow: "hidden",
             }}>
-              {bubbles.filter((b) => !b.popped).map((bubble) => (
+              {/* Feedback overlay */}
+              {feedback && (
+                <div style={{
+                  position: "absolute", inset: 0, display: "flex",
+                  alignItems: "center", justifyContent: "center",
+                  zIndex: 10, pointerEvents: "none",
+                }}>
+                  <span style={{
+                    fontFamily: "'Fredoka',sans-serif", fontSize: "2.8rem", fontWeight: 700,
+                    color: "var(--sage-500)",
+                    textShadow: "0 2px 12px rgba(0,0,0,0.15)",
+                    animation: "feedbackPop 0.3s ease-out",
+                  }}>
+                    {feedback}
+                  </span>
+                </div>
+              )}
+
+              {/* Bubbles */}
+              {!feedback && bubbles.map((bubble) => (
                 <button
                   key={bubble.id}
                   onClick={() => handleBubbleTap(bubble)}
@@ -316,35 +353,18 @@ export default function BubblePopPage() {
                     border: "3px solid rgba(255,255,255,0.5)", background: bubble.color,
                     boxShadow: "0 4px 15px rgba(0,0,0,0.1), inset 0 -4px 8px rgba(0,0,0,0.06), inset 0 4px 8px rgba(255,255,255,0.4)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontFamily: "'Fredoka',sans-serif", fontWeight: 700, fontSize: "1.3rem",
+                    fontFamily: "'Fredoka',sans-serif", fontWeight: 700, fontSize: "1.4rem",
                     color: "var(--text-primary)", cursor: "pointer", padding: 0,
-                    animation: bubble.shaking
-                      ? "gentleShake 0.5s ease"
-                      : `bubbleAppear 0.35s ease-out, bubbleIdle ${2.5 + (bubble.id % 3) * 0.5}s ${0.35}s ease-in-out infinite`,
+                    animation: poppingId === bubble.id
+                      ? "popBurst 0.3s ease-out forwards"
+                      : shakingId === bubble.id
+                        ? "gentleShake 0.4s ease"
+                        : `bubbleAppear 0.3s ease-out, bubbleIdle ${2.5 + (bubble.id % 3) * 0.4}s 0.3s ease-in-out infinite`,
                     transform: "translate(-50%, -50%)",
                   }}
                 >
                   {bubble.label}
                 </button>
-              ))}
-              {bubbles.filter((b) => b.popped).slice(-5).map((bubble) => (
-                <div
-                  key={`pop-${bubble.id}`}
-                  style={{
-                    position: "absolute",
-                    left: `${bubble.x}%`, top: `${bubble.y}%`,
-                    width: bubble.size, height: bubble.size, borderRadius: "50%",
-                    background: "var(--sage-300)", display: "flex",
-                    alignItems: "center", justifyContent: "center",
-                    fontFamily: "'Fredoka',sans-serif", fontWeight: 700, fontSize: "1.3rem",
-                    color: "var(--text-primary)",
-                    animation: "popAnim 0.35s ease-out forwards",
-                    pointerEvents: "none",
-                    transform: "translate(-50%, -50%)",
-                  }}
-                >
-                  {bubble.label}
-                </div>
               ))}
             </div>
           </div>
@@ -353,25 +373,29 @@ export default function BubblePopPage() {
         {screen === "result" && (
           <div className="fade fade-2" style={{ textAlign: "center" }}>
             <div style={{ fontSize: "3.5rem", marginBottom: 20 }}>
-              {finalScore >= 70 ? "\uD83C\uDFC6" : "\uD83C\uDF1F"}
+              {score >= 10 ? "\uD83C\uDFC6" : score >= 5 ? "\uD83C\uDF1F" : "\uD83D\uDCAA"}
             </div>
             <h1 className="page-title">
-              {finalScore >= 70 ? (<>Great <em>Popping!</em></>) : (<>Nice <em>Try!</em></>)}
+              {score >= 10 ? (<>Amazing <em>Popping!</em></>) : score >= 5 ? (<>Great <em>Job!</em></>) : (<>Nice <em>Try!</em></>)}
             </h1>
             <div style={{
-              display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap", marginBottom: 32,
+              display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", marginBottom: 32,
             }}>
-              <div className="card" style={{ padding: "20px 24px", textAlign: "center" }}>
-                <div style={statStyle}>{finalScore}%</div>
-                <div style={statLabel}>Accuracy</div>
-              </div>
-              <div className="card" style={{ padding: "20px 24px", textAlign: "center" }}>
-                <div style={statStyle}>{score}/{totalPops}</div>
+              <div className="card" style={{ padding: "18px 22px", textAlign: "center" }}>
+                <div style={statStyle}>{score}</div>
                 <div style={statLabel}>Popped</div>
               </div>
-              <div className="card" style={{ padding: "20px 24px", textAlign: "center" }}>
-                <div style={statStyle}>{Math.floor(elapsed / 1000)}s</div>
-                <div style={statLabel}>Time</div>
+              <div className="card" style={{ padding: "18px 22px", textAlign: "center" }}>
+                <div style={statStyle}>{accuracy}%</div>
+                <div style={statLabel}>Accuracy</div>
+              </div>
+              <div className="card" style={{ padding: "18px 22px", textAlign: "center" }}>
+                <div style={statStyle}>{rounds}</div>
+                <div style={statLabel}>Rounds</div>
+              </div>
+              <div className="card" style={{ padding: "18px 22px", textAlign: "center" }}>
+                <div style={{...statStyle, fontSize: "1.4rem"}}>{totalAttempts > 0 ? (GAME_DURATION / score).toFixed(1) : "--"}s</div>
+                <div style={statLabel}>Avg Speed</div>
               </div>
             </div>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
