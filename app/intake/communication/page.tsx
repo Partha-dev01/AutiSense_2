@@ -12,22 +12,137 @@ const STEPS = [
   "Prepare", "Motor", "Video", "Summary", "Report",
 ];
 const STEP_IDX = 3;
-const MIN_MATCHED = 2; // Criteria gate: at least 2 words matched
+const MIN_MATCHED = 2;
 
 interface WordItem { text: string; emoji: string }
 
 type WordState = "idle" | "playing" | "listening" | "matched" | "missed";
 
+/* ── Mic Visualizer ─────────────────────────────────────────────────── */
+function MicVisualizer({ active }: { active: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const ctxRef = useRef<{ stream: MediaStream; audioCtx: AudioContext; analyser: AnalyserNode; raf: number } | null>(null);
+
+  useEffect(() => {
+    if (!active) {
+      // cleanup
+      if (ctxRef.current) {
+        cancelAnimationFrame(ctxRef.current.raf);
+        ctxRef.current.audioCtx.close().catch(() => {});
+        ctxRef.current.stream.getTracks().forEach((t) => t.stop());
+        ctxRef.current = null;
+      }
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
+
+        const audioCtx = new AudioContext();
+        const source = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 64;
+        source.connect(analyser);
+
+        const bufLen = analyser.frequencyBinCount;
+        const data = new Uint8Array(bufLen);
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        const BAR_COUNT = 5;
+        const BAR_WIDTH = 6;
+        const GAP = 5;
+        const W = BAR_COUNT * BAR_WIDTH + (BAR_COUNT - 1) * GAP;
+        const H = 40;
+        canvas.width = W;
+        canvas.height = H;
+
+        const draw = () => {
+          analyser.getByteFrequencyData(data);
+          ctx.clearRect(0, 0, W, H);
+
+          for (let i = 0; i < BAR_COUNT; i++) {
+            // Sample from different frequency bins
+            const bin = Math.floor((i / BAR_COUNT) * bufLen * 0.6) + 1;
+            const val = data[bin] / 255;
+            const minH = 6;
+            const barH = minH + val * (H - minH);
+            const x = i * (BAR_WIDTH + GAP);
+            const y = (H - barH) / 2;
+
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--sage-500").trim() || "#4d8058";
+            ctx.beginPath();
+            ctx.roundRect(x, y, BAR_WIDTH, barH, 3);
+            ctx.fill();
+          }
+
+          const raf = requestAnimationFrame(draw);
+          if (ctxRef.current) ctxRef.current.raf = raf;
+        };
+
+        const raf = requestAnimationFrame(draw);
+        ctxRef.current = { stream, audioCtx, analyser, raf };
+      } catch {
+        // mic unavailable — show static bars via CSS fallback
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (ctxRef.current) {
+        cancelAnimationFrame(ctxRef.current.raf);
+        ctxRef.current.audioCtx.close().catch(() => {});
+        ctxRef.current.stream.getTracks().forEach((t) => t.stop());
+        ctxRef.current = null;
+      }
+    };
+  }, [active]);
+
+  if (!active) return null;
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 16 }}>
+      <canvas
+        ref={canvasRef}
+        style={{ width: 55, height: 40 }}
+      />
+    </div>
+  );
+}
+
+/* ── Fallback CSS visualizer (3 bars) when canvas fails ─────────────── */
+function CSSVisualizer() {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, height: 40, marginBottom: 16 }}>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div
+          key={i}
+          style={{
+            width: 6,
+            borderRadius: 3,
+            background: "var(--sage-500)",
+            animation: `vizBar 0.8s ease-in-out ${i * 0.15}s infinite alternate`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function CommunicationPage() {
   const router = useRouter();
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
-  // Dynamic word loading
   const [words, setWords] = useState<WordItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
-  // Task state
   const [started, setStarted] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [wordState, setWordState] = useState<WordState>("idle");
@@ -35,6 +150,7 @@ export default function CommunicationPage() {
   const [results, setResults] = useState<("matched" | "missed")[]>([]);
   const [taskComplete, setTaskComplete] = useState(false);
   const [forceComplete, setForceComplete] = useState(false);
+  const [micAvailable, setMicAvailable] = useState(true);
 
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -51,7 +167,7 @@ export default function CommunicationPage() {
     document.documentElement.setAttribute("data-theme", next);
   };
 
-  // Load dynamic words from API on mount
+  // Load dynamic words
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -82,6 +198,12 @@ export default function CommunicationPage() {
     return () => { cancelled = true; };
   }, []);
 
+  // Check mic support on mount
+  useEffect(() => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) setMicAvailable(false);
+  }, []);
+
   const stopRecognition = useCallback(() => {
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch { /* ignore */ }
@@ -104,7 +226,7 @@ export default function CommunicationPage() {
     }
   }, [currentIdx, words.length]);
 
-  // TTS: Polly first, browser SpeechSynthesis fallback
+  // TTS: Polly first, browser fallback
   const speakWord = useCallback(async (text: string): Promise<void> => {
     try {
       const res = await fetch("/api/tts", {
@@ -118,9 +240,24 @@ export default function CommunicationPage() {
       return new Promise<void>((resolve) => {
         const audio = new Audio(url);
         audioRef.current = audio;
-        audio.onended = () => { URL.revokeObjectURL(url); audioRef.current = null; resolve(); };
-        audio.onerror = () => { URL.revokeObjectURL(url); audioRef.current = null; resolve(); };
-        audio.play().catch(() => { URL.revokeObjectURL(url); resolve(); });
+        audio.onended = () => {
+          URL.revokeObjectURL(url);
+          audio.src = "";
+          audioRef.current = null;
+          resolve();
+        };
+        audio.onerror = () => {
+          URL.revokeObjectURL(url);
+          audio.src = "";
+          audioRef.current = null;
+          resolve();
+        };
+        audio.play().catch(() => {
+          URL.revokeObjectURL(url);
+          audio.src = "";
+          audioRef.current = null;
+          resolve();
+        });
       });
     } catch {
       return new Promise<void>((resolve) => {
@@ -147,16 +284,29 @@ export default function CommunicationPage() {
     recognition.continuous = false;
     recognition.interimResults = true;
     recognition.lang = "en-US";
+    recognition.maxAlternatives = 3;
     recognitionRef.current = recognition;
+
+    let settled = false;
 
     recognition.onresult = (event: any) => {
       const result = Array.from(event.results)
         .map((r: any) => r[0].transcript)
         .join("");
       setTranscript(result);
-      if (event.results[0]?.isFinal) {
+      if (event.results[0]?.isFinal && !settled) {
+        settled = true;
         stopRecognition();
-        const match = result.toLowerCase().includes(expectedWord.toLowerCase());
+        // Check all alternatives for a match
+        let match = false;
+        for (let i = 0; i < event.results[0].length; i++) {
+          if (event.results[0][i].transcript.toLowerCase().includes(expectedWord.toLowerCase())) {
+            match = true;
+            break;
+          }
+        }
+        if (!match) match = result.toLowerCase().includes(expectedWord.toLowerCase());
+
         if (match) {
           setWordState("matched");
           setTimeout(() => advance("matched"), 1200);
@@ -167,18 +317,33 @@ export default function CommunicationPage() {
     };
 
     recognition.onerror = () => {
-      stopRecognition();
-      setWordState("missed");
+      if (!settled) {
+        settled = true;
+        stopRecognition();
+        setWordState("missed");
+      }
     };
 
-    // Small delay to avoid hardware contention after TTS playback releases audio
+    recognition.onend = () => {
+      // If recognition ended without a final result (e.g. silence)
+      if (!settled) {
+        settled = true;
+        stopRecognition();
+        setWordState("missed");
+      }
+    };
+
+    // 500ms delay on desktop to let audio hardware fully release after TTS
     setTimeout(() => {
-      try { recognition.start(); } catch { /* ignore */ }
-    }, 200);
+      try { recognition.start(); } catch { setWordState("missed"); }
+    }, 500);
 
     timerRef.current = setTimeout(() => {
-      stopRecognition();
-      setWordState("missed");
+      if (!settled) {
+        settled = true;
+        stopRecognition();
+        setWordState("missed");
+      }
     }, 10000);
   }, [advance, stopRecognition]);
 
@@ -186,7 +351,10 @@ export default function CommunicationPage() {
     const word = words[currentIdx];
     if (!word) return;
     setWordState("playing");
+    setTranscript("");
     await speakWord(word.text);
+    // Extra delay to ensure audio hardware is fully released on desktop
+    await new Promise((r) => setTimeout(r, 300));
     setWordState("listening");
     startListening(word.text);
   }, [currentIdx, words, speakWord, startListening]);
@@ -194,7 +362,11 @@ export default function CommunicationPage() {
   useEffect(() => {
     return () => {
       stopRecognition();
-      if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current = null;
+      }
     };
   }, [stopRecognition]);
 
@@ -231,7 +403,7 @@ export default function CommunicationPage() {
         <Link href="/" className="logo">Auti<em>Sense</em></Link>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button onClick={toggleTheme} className="btn btn-outline" style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.88rem" }}>
-            {theme === "light" ? "🌙" : "☀️"}
+            {theme === "light" ? "\u{1F319}" : "\u{2600}\u{FE0F}"}
           </button>
           <span style={{ fontSize: "0.88rem", color: "var(--text-muted)", fontWeight: 600 }}>
             Step {STEP_IDX + 1} of 10
@@ -244,7 +416,7 @@ export default function CommunicationPage() {
           {STEPS.map((s, i) => (
             <div key={s} style={{ display: "flex", alignItems: "center", flex: i < STEPS.length - 1 ? 1 : "none" }}>
               <div className={`step-dot ${i < STEP_IDX ? "done" : i === STEP_IDX ? "active" : "upcoming"}`} title={s}>
-                {i < STEP_IDX ? "✓" : i + 1}
+                {i < STEP_IDX ? "\u2713" : i + 1}
               </div>
               {i < STEPS.length - 1 && <div className={`step-line ${i < STEP_IDX ? "done" : ""}`} />}
             </div>
@@ -256,20 +428,20 @@ export default function CommunicationPage() {
         <SkipStageDialog onConfirm={handleSkipStage} />
         <div className="fade fade-1" style={{ textAlign: "center", marginBottom: 28 }}>
           <div className="breathe-orb" style={{ margin: "0 auto" }}>
-            <div className="breathe-inner">🔊</div>
+            <div className="breathe-inner">{"\u{1F50A}"}</div>
           </div>
         </div>
 
-        <div className="chip fade fade-1">Step 4 — Word Echo</div>
+        <div className="chip fade fade-1">Step 4 &mdash; Word Echo</div>
         <h1 className="page-title fade fade-2">
           Word echo <em>challenge</em>
         </h1>
         <p className="subtitle fade fade-2">
-          We'll say a word out loud. Encourage your child to say it back!
+          We&apos;ll say a word out loud. Encourage your child to say it back!
           This tests audio processing and speech production.
         </p>
 
-        {/* Loading state */}
+        {/* Loading */}
         {isLoading && (
           <div className="card fade fade-3" style={{ padding: "32px 28px", textAlign: "center" }}>
             <div style={{
@@ -295,11 +467,20 @@ export default function CommunicationPage() {
         {!isLoading && words.length > 0 && !started && (
           <div className="fade fade-3" style={{ textAlign: "center" }}>
             <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", marginBottom: 20 }}>
-              Make sure your volume is up! We'll play {words.length} words and listen for echoes.
+              Make sure your volume is up! We&apos;ll play {words.length} words and listen for echoes.
             </p>
+            {!micAvailable && (
+              <div style={{
+                padding: "12px 20px", borderRadius: 12, background: "var(--peach-100)",
+                border: "2px solid var(--peach-300)", marginBottom: 16,
+                fontSize: "0.85rem", color: "var(--text-secondary)",
+              }}>
+                Speech recognition is not available in this browser. Try Chrome on desktop.
+              </div>
+            )}
             <button className="btn btn-primary" onClick={() => { setStarted(true); playAndListen(); }}
               style={{ minHeight: 52, padding: "12px 36px" }}>
-              🔊 Start Word Echo
+              {"\u{1F50A}"} Start Word Echo
             </button>
           </div>
         )}
@@ -307,44 +488,69 @@ export default function CommunicationPage() {
         {/* Active test */}
         {started && !taskComplete && word && (
           <div className="card fade fade-3" style={{ padding: "32px 28px", textAlign: "center" }}>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: 20, fontWeight: 600 }}>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: 16, fontWeight: 600 }}>
               Word {currentIdx + 1} of {words.length}
             </p>
 
-            <div style={{ fontSize: "3.5rem", marginBottom: 12 }}>{word.emoji}</div>
+            {/* Always show the word prominently */}
+            <div style={{ fontSize: "3.5rem", marginBottom: 8 }}>{word.emoji}</div>
+            <h2 style={{
+              fontFamily: "'Fredoka',sans-serif", fontWeight: 700,
+              fontSize: "2.2rem", color: "var(--sage-600)", marginBottom: 16,
+              letterSpacing: "0.5px",
+            }}>
+              {"\u201C"}{word.text}{"\u201D"}
+            </h2>
 
             {wordState === "idle" && (
               <button className="btn btn-primary" onClick={playAndListen} style={{ minHeight: 48, padding: "10px 28px" }}>
-                🔊 Play Word
+                {"\u{1F50A}"} Play Word
               </button>
             )}
 
             {wordState === "playing" && (
               <div>
-                <h2 style={{ fontFamily: "'Fredoka',sans-serif", fontWeight: 600, fontSize: "2rem", color: "var(--sage-600)", marginBottom: 8 }}>
-                  &ldquo;{word.text}&rdquo;
-                </h2>
-                <p style={{ color: "var(--sage-500)", fontWeight: 700, fontSize: "0.9rem" }}>
-                  🔊 Playing...
+                {/* Speaker wave animation */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, height: 40, marginBottom: 12 }}>
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: 6,
+                        borderRadius: 3,
+                        background: "var(--sage-400)",
+                        animation: `vizBar 0.6s ease-in-out ${i * 0.1}s infinite alternate`,
+                      }}
+                    />
+                  ))}
+                </div>
+                <p style={{ color: "var(--sage-500)", fontWeight: 700, fontSize: "0.95rem" }}>
+                  {"\u{1F50A}"} Speaking...
                 </p>
               </div>
             )}
 
             {wordState === "listening" && (
               <div>
-                <h2 style={{ fontFamily: "'Fredoka',sans-serif", fontWeight: 600, fontSize: "1.5rem", color: "var(--text-primary)", marginBottom: 12 }}>
-                  Now say: &ldquo;{word.text}&rdquo;
-                </h2>
+                <p style={{
+                  fontWeight: 600, fontSize: "1rem", color: "var(--text-secondary)", marginBottom: 12,
+                }}>
+                  Your turn! Say &ldquo;{word.text}&rdquo;
+                </p>
+
+                {/* Live mic visualizer */}
+                <MicVisualizer active={true} />
+
                 <div style={{
                   display: "inline-flex", alignItems: "center", gap: 8,
-                  padding: "10px 24px", borderRadius: "var(--r-full)",
+                  padding: "8px 20px", borderRadius: "var(--r-full)",
                   background: "var(--sage-50)", border: "2px solid var(--sage-300)",
                 }}>
                   <div style={{
-                    width: 12, height: 12, borderRadius: "50%", background: "var(--sage-500)",
-                    animation: "breathe-core 1.5s ease-in-out infinite",
+                    width: 10, height: 10, borderRadius: "50%", background: "#e53e3e",
+                    animation: "pulse-dot 1s ease-in-out infinite",
                   }} />
-                  <span style={{ fontWeight: 700, color: "var(--sage-600)", fontSize: "0.9rem" }}>
+                  <span style={{ fontWeight: 700, color: "var(--sage-600)", fontSize: "0.85rem" }}>
                     Listening...
                   </span>
                 </div>
@@ -353,60 +559,57 @@ export default function CommunicationPage() {
 
             {wordState === "matched" && (
               <div>
+                <div style={{
+                  width: 48, height: 48, borderRadius: "50%", background: "var(--sage-500)",
+                  color: "white", display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "1.4rem", fontWeight: 700, margin: "0 auto 12px",
+                }}>
+                  {"\u2713"}
+                </div>
                 <p style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--sage-600)" }}>
-                  ✓ Great match!
+                  Great match!
                 </p>
               </div>
             )}
 
             {wordState === "missed" && (
               <div>
-                <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: 16 }}>
-                  No match detected — that's okay!
+                <p style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: 16 }}>
+                  No match detected &mdash; that&apos;s okay!
                 </p>
                 <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
                   <button className="btn btn-primary"
                     style={{ minHeight: 44, padding: "8px 20px", fontSize: "0.9rem" }}
-                    onClick={() => { setWordState("idle"); setTranscript(""); }}>
-                    Replay & Retry
+                    onClick={() => { setWordState("idle"); setTranscript(""); playAndListen(); }}>
+                    Replay &amp; Retry
                   </button>
                   <button className="btn btn-secondary"
                     style={{ minHeight: 44, padding: "8px 20px", fontSize: "0.9rem" }}
                     onClick={() => advance("missed")}>
-                    Next Word →
+                    Next Word {"\u2192"}
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Live transcript — visible during listening, matched, missed */}
+            {/* Live transcript */}
             {(wordState === "listening" || wordState === "matched" || wordState === "missed") && transcript && (
               <div style={{
-                marginTop: 16,
-                padding: "12px 20px",
-                borderRadius: 12,
-                background: "var(--sage-50)",
-                border: "2px solid var(--sage-300)",
-                animation: wordState === "listening" ? "breathe-core 1.5s ease-in-out infinite" : "none",
+                marginTop: 16, padding: "12px 20px", borderRadius: 12,
+                background: "var(--sage-50)", border: "2px solid var(--sage-300)",
               }}>
                 <div style={{
-                  fontSize: "0.75rem",
-                  color: "var(--text-muted)",
-                  fontWeight: 700,
-                  marginBottom: 4,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
+                  fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: 700,
+                  marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em",
                 }}>
                   Heard:
                 </div>
                 <p style={{
-                  fontSize: "1.4rem",
-                  fontWeight: 700,
+                  fontSize: "1.4rem", fontWeight: 700,
                   color: wordState === "matched" ? "var(--sage-600)" : "var(--text-primary)",
-                  fontFamily: "'Fredoka',sans-serif",
-                  margin: 0,
+                  fontFamily: "'Fredoka',sans-serif", margin: 0,
                 }}>
-                  &ldquo;{transcript}&rdquo;
+                  {"\u201C"}{transcript}{"\u201D"}
                 </p>
               </div>
             )}
@@ -418,8 +621,8 @@ export default function CommunicationPage() {
                   width: 10, height: 10, borderRadius: "50%",
                   background: i < results.length
                     ? (results[i] === "matched" ? "var(--sage-500)" : "var(--peach-300)")
-                    : i === currentIdx ? "var(--sky-300)" : "var(--bg-elevated)",
-                  border: "2px solid var(--border-card)",
+                    : i === currentIdx ? "var(--sky-300)" : "var(--sage-100)",
+                  transition: "background 300ms ease",
                 }} />
               ))}
             </div>
@@ -431,7 +634,7 @@ export default function CommunicationPage() {
           <>
             {meetsCriteria || forceComplete ? (
               <div className="card fade fade-3" style={{ padding: "32px 28px", textAlign: "center", background: "var(--sage-50)", borderColor: "var(--sage-300)" }}>
-                <div style={{ fontSize: "2.5rem", marginBottom: 14 }}>🎵</div>
+                <div style={{ fontSize: "2.5rem", marginBottom: 14 }}>{"\u{1F3B5}"}</div>
                 <h2 style={{ fontFamily: "'Fredoka',sans-serif", fontWeight: 600, fontSize: "1.3rem", marginBottom: 14 }}>
                   Word echo complete!
                 </h2>
@@ -440,10 +643,10 @@ export default function CommunicationPage() {
                 </p>
               </div>
             ) : (
-              <div className="card fade fade-3" style={{ padding: "32px 28px", textAlign: "center", background: "var(--peach-50)", borderColor: "var(--peach-300)" }}>
-                <div style={{ fontSize: "2.5rem", marginBottom: 14 }}>🔄</div>
+              <div className="card fade fade-3" style={{ padding: "32px 28px", textAlign: "center" }}>
+                <div style={{ fontSize: "2.5rem", marginBottom: 14 }}>{"\u{1F504}"}</div>
                 <h2 style={{ fontFamily: "'Fredoka',sans-serif", fontWeight: 600, fontSize: "1.3rem", marginBottom: 10 }}>
-                  Let's try again!
+                  Let&apos;s try again!
                 </h2>
                 <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: 20 }}>
                   Only {matchedCount} of {words.length} words echoed. We need at least {MIN_MATCHED} to continue.
@@ -466,7 +669,7 @@ export default function CommunicationPage() {
         {/* Navigation */}
         <div className="fade fade-4" style={{ display: "flex", gap: 12, marginTop: 28 }}>
           <Link href="/intake/device-check" className="btn btn-outline" style={{ minWidth: 100 }}>
-            ← Back
+            {"\u2190"} Back
           </Link>
           <button className="btn btn-primary btn-full"
             disabled={!taskComplete || (!meetsCriteria && !forceComplete)}
@@ -481,7 +684,7 @@ export default function CommunicationPage() {
               }
               router.push("/intake/behavioral-observation");
             }}>
-            Continue →
+            Continue {"\u2192"}
           </button>
         </div>
       </main>
@@ -489,6 +692,14 @@ export default function CommunicationPage() {
       <style jsx>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+        @keyframes vizBar {
+          0% { height: 6px; }
+          100% { height: 32px; }
+        }
+        @keyframes pulse-dot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.8); }
         }
       `}</style>
     </div>

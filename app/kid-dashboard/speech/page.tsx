@@ -222,10 +222,10 @@ export default function SpeechPracticePage() {
 
     recognition.onend = () => { if (!settled) setListening(false); };
 
-    // Small delay to avoid hardware contention after mic permission check
+    // 500ms delay to let audio hardware fully release on desktop after TTS/mic check
     setTimeout(() => {
       try { recognition.start(); } catch { setListening(false); }
-    }, 200);
+    }, 500);
   }, [words, wordIdx, advanceWord]);
 
   const fallbackMark = useCallback(() => {
@@ -359,7 +359,20 @@ export default function SpeechPracticePage() {
                   style={{ minHeight: 56, minWidth: 56, padding: "12px 28px", fontSize: "1rem", fontWeight: 600 }}
                   aria-label="Record your voice"
                 >
-                  {listening ? "Listening..." : "I said it!"}
+                  {listening ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 3, height: 20 }}>
+                        {[0,1,2,3,4].map((i) => (
+                          <span key={i} style={{
+                            display: "inline-block", width: 4, borderRadius: 2,
+                            background: "white",
+                            animation: `vizBar 0.8s ease-in-out ${i * 0.12}s infinite alternate`,
+                          }} />
+                        ))}
+                      </span>
+                      Listening...
+                    </span>
+                  ) : "I said it!"}
                 </button>
               ) : (
                 <button
@@ -445,6 +458,13 @@ export default function SpeechPracticePage() {
           </div>
         )}
       </div>
+
+      <style jsx>{`
+        @keyframes vizBar {
+          0% { height: 4px; }
+          100% { height: 18px; }
+        }
+      `}</style>
     </div>
   );
 }
