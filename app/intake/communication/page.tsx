@@ -276,59 +276,54 @@ export default function CommunicationPage() {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = false;
+    recognition.continuous = true;       // keep listening — don't stop on silence
     recognition.interimResults = true;
     recognition.lang = "en-US";
     recognition.maxAlternatives = 3;
     recognitionRef.current = recognition;
 
     let settled = false;
-    const listenStart = Date.now();
-    const MIN_LISTEN_MS = 3000; // minimum 3s before declaring "missed"
 
     recognition.onresult = (event: any) => {
-      const result = Array.from(event.results)
-        .map((r: any) => r[0].transcript)
-        .join("");
-      setTranscript(result);
-      if (event.results[0]?.isFinal && !settled) {
-        settled = true;
-        stopRecognition();
+      // Collect all transcripts across all results
+      let full = "";
+      for (let i = 0; i < event.results.length; i++) {
+        full += event.results[i][0].transcript;
+      }
+      setTranscript(full);
+
+      // Check the latest result for a final match
+      const latest = event.results[event.results.length - 1];
+      if (latest?.isFinal && !settled) {
         let match = false;
-        for (let i = 0; i < event.results[0].length; i++) {
-          if (event.results[0][i].transcript.toLowerCase().includes(expectedWord.toLowerCase())) {
+        // Check all alternatives
+        for (let i = 0; i < latest.length; i++) {
+          if (latest[i].transcript.toLowerCase().includes(expectedWord.toLowerCase())) {
             match = true;
             break;
           }
         }
-        if (!match) match = result.toLowerCase().includes(expectedWord.toLowerCase());
+        if (!match) match = full.toLowerCase().includes(expectedWord.toLowerCase());
 
         if (match) {
+          settled = true;
+          stopRecognition();
           setWordState("matched");
           setTimeout(() => advance("matched"), 1200);
-        } else {
-          setWordState("missed");
         }
+        // If not matched, keep listening until timeout
       }
     };
 
-    recognition.onerror = () => {
-      if (settled) return;
-      // If ended too early (no speech detected yet), restart recognition
-      if (Date.now() - listenStart < MIN_LISTEN_MS) {
-        try { recognition.start(); } catch { settled = true; stopRecognition(); setWordState("missed"); }
-        return;
-      }
-      settled = true; stopRecognition(); setWordState("missed");
+    recognition.onerror = (e: any) => {
+      // "no-speech" is expected — just keep waiting for the timeout
+      if (e.error === "no-speech" || e.error === "aborted") return;
+      if (!settled) { settled = true; stopRecognition(); setWordState("missed"); }
     };
 
     recognition.onend = () => {
-      if (settled) return;
-      if (Date.now() - listenStart < MIN_LISTEN_MS) {
-        try { recognition.start(); } catch { settled = true; stopRecognition(); setWordState("missed"); }
-        return;
-      }
-      settled = true; stopRecognition(); setWordState("missed");
+      // Only mark missed if the hard timeout triggered the stop
+      if (!settled) { settled = true; setWordState("missed"); }
     };
 
     // Mic is already warm from getUserMedia — just a small safety delay
@@ -336,9 +331,10 @@ export default function CommunicationPage() {
       try { recognition.start(); } catch { setWordState("missed"); }
     }, 300);
 
+    // Hard timeout: 8 seconds to speak
     timerRef.current = setTimeout(() => {
       if (!settled) { settled = true; stopRecognition(); setWordState("missed"); }
-    }, 10000);
+    }, 8000);
   }, [advance, stopRecognition]);
 
   const playAndListen = useCallback(async () => {

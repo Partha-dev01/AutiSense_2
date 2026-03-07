@@ -7,8 +7,8 @@ import { getDifficulty, saveDifficulty } from "../../lib/games/difficultyEngine"
 interface SpeechRec {
   lang: string;
   interimResults: boolean;
-  onresult: ((e: { results: { transcript: string }[][] }) => void) | null;
-  onerror: (() => void) | null;
+  onresult: ((e: { results: { transcript: string; isFinal?: boolean }[][] }) => void) | null;
+  onerror: ((e: { error?: string }) => void) | null;
   onend: (() => void) | null;
   start: () => void;
   stop: () => void;
@@ -185,42 +185,42 @@ export default function SpeechPracticePage() {
     const recognition = new (SR as new () => SpeechRec)();
     recognition.lang = "en-US";
     recognition.interimResults = true;
+    (recognition as any).continuous = true; // keep listening — don't stop on silence
 
     let settled = false;
-    const listenStart = Date.now();
-    const MIN_LISTEN_MS = 3000; // minimum 3s before declaring failure
 
     recognition.onresult = (e: { results: { transcript: string; isFinal?: boolean }[][] }) => {
       if (settled) return;
-      const result = e.results[0];
-      const transcript = result[0].transcript.toLowerCase();
+      // Collect all transcripts
+      let full = "";
+      for (let i = 0; i < e.results.length; i++) {
+        full += e.results[i][0].transcript;
+      }
       const target = words[wordIdx].toLowerCase();
 
-      // Accept on final result or interim match
-      if ((result as unknown as { isFinal?: boolean }).isFinal || transcript.includes(target)) {
+      // Check for match in any result (interim or final)
+      if (full.toLowerCase().includes(target)) {
         settled = true;
         try { recognition.stop(); } catch { /* ignore */ }
         setListening(false);
+        setScore((s) => s + 1);
+        setFeedback("Great job!");
+        setFeedbackOk(true);
+        setTimeout(advanceWord, 1500);
+        return;
+      }
 
-        if (transcript.includes(target)) {
-          setScore((s) => s + 1);
-          setFeedback("Great job!");
-          setFeedbackOk(true);
-          setTimeout(advanceWord, 1500);
-        } else {
-          setFeedback(`Good try! You said "${result[0].transcript}". Let\u2019s try again.`);
-          setFeedbackOk(false);
-        }
+      // On final result that doesn't match, show feedback but keep listening
+      const latest = e.results[e.results.length - 1];
+      if ((latest as unknown as { isFinal?: boolean }).isFinal) {
+        // Not a match on this segment — user can keep trying until timeout
       }
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (err: any) => {
       if (settled) return;
-      // Restart if ended too early (no speech detected yet)
-      if (Date.now() - listenStart < MIN_LISTEN_MS) {
-        try { recognition.start(); } catch { settled = true; setListening(false); setFeedback("Could not hear you. Try again closer to the mic."); setFeedbackOk(false); }
-        return;
-      }
+      // "no-speech" / "aborted" are normal with continuous mode
+      if (err?.error === "no-speech" || err?.error === "aborted") return;
       settled = true;
       setListening(false);
       setFeedback("Could not hear you. Try again closer to the mic.");
@@ -228,18 +228,24 @@ export default function SpeechPracticePage() {
     };
 
     recognition.onend = () => {
-      if (settled) return;
-      if (Date.now() - listenStart < MIN_LISTEN_MS) {
-        try { recognition.start(); } catch { settled = true; setListening(false); }
-        return;
-      }
-      settled = true; setListening(false);
+      if (!settled) { settled = true; setListening(false); }
     };
 
     // 500ms delay to let audio hardware fully release on desktop after TTS/mic check
     setTimeout(() => {
       try { recognition.start(); } catch { setListening(false); }
     }, 500);
+
+    // Hard timeout: 8 seconds
+    setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        try { recognition.stop(); } catch { /* ignore */ }
+        setListening(false);
+        setFeedback("Time\u2019s up! Try again.");
+        setFeedbackOk(false);
+      }
+    }, 8500);
   }, [words, wordIdx, advanceWord]);
 
   const fallbackMark = useCallback(() => {

@@ -189,59 +189,53 @@ export default function AudioAssessmentPage() {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = false;
+    recognition.continuous = true;       // keep listening — don't stop on silence
     recognition.interimResults = true;
     recognition.lang = "en-US";
     recognitionRef.current = recognition;
 
     let settled = false;
-    const listenStart = Date.now();
-    const MIN_LISTEN_MS = 3000; // minimum 3s before declaring "missed"
 
     recognition.onresult = (event: any) => {
-      const result = Array.from(event.results)
-        .map((r: any) => r[0].transcript)
-        .join("");
-      setTranscript(result);
-      if (event.results[0]?.isFinal && !settled) {
-        settled = true;
-        stopRecognition();
+      // Collect all transcripts across all results
+      let full = "";
+      for (let i = 0; i < event.results.length; i++) {
+        full += event.results[i][0].transcript;
+      }
+      setTranscript(full);
+
+      // Check the latest final result
+      const latest = event.results[event.results.length - 1];
+      if (latest?.isFinal && !settled) {
         if (isPart === "A") {
-          const score = sentenceMatchScore(expectedText, result);
+          const score = sentenceMatchScore(expectedText, full);
           if (score >= 0.4) {
+            settled = true;
+            stopRecognition();
             setItemState("matched");
             setTimeout(() => advanceItem("matched"), 1200);
-          } else {
-            setItemState("missed");
           }
+          // If not matched, keep listening until timeout
         } else {
           // Part B: any response = engaged
-          if (result.trim().length > 0) {
+          if (full.trim().length > 0) {
+            settled = true;
+            stopRecognition();
             setItemState("matched");
             setTimeout(() => advanceItem("responded"), 1200);
-          } else {
-            setItemState("missed");
           }
         }
       }
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (e: any) => {
       if (settled) return;
-      if (Date.now() - listenStart < MIN_LISTEN_MS) {
-        try { recognition.start(); } catch { settled = true; stopRecognition(); setItemState("missed"); }
-        return;
-      }
+      if (e.error === "no-speech" || e.error === "aborted") return;
       settled = true; stopRecognition(); setItemState("missed");
     };
 
     recognition.onend = () => {
-      if (settled) return;
-      if (Date.now() - listenStart < MIN_LISTEN_MS) {
-        try { recognition.start(); } catch { settled = true; stopRecognition(); setItemState("missed"); }
-        return;
-      }
-      settled = true; stopRecognition(); setItemState("missed");
+      if (!settled) { settled = true; setItemState("missed"); }
     };
 
     // Small delay for desktop hardware
@@ -249,9 +243,10 @@ export default function AudioAssessmentPage() {
       try { recognition.start(); } catch { setItemState("missed"); }
     }, 400);
 
+    // Hard timeout
     timerRef.current = setTimeout(() => {
       if (!settled) { settled = true; stopRecognition(); setItemState("missed"); }
-    }, 12000);
+    }, 10000);
   }, [advanceItem, stopRecognition]);
 
   const playAndListen = useCallback(async () => {
