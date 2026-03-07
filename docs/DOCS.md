@@ -1087,6 +1087,27 @@ A complete kids-facing dashboard with bottom tab navigation, daily games, AI cha
 
 **Commits:** `6c36e99`, `78bc739`, `6e1500f`, `9787c2f`, `1788d1f`, `d22c272`
 
+### v2.6.1 — 2026-03-07 (Action Detection — Sensitivity Overhaul)
+
+**Root cause**: All confidence gates were set to 0.15, but YOLO keypoint confidence drops well below that when body parts overlap (e.g., hand near face, hands clapping). The skeleton was visibly drawn on screen but detection returned `prox=0.00` because keypoints failed the gate.
+
+**Changes:**
+- **Global confidence gate**: Unified to `CONF_GATE = 0.05` — if the skeleton is drawn, the keypoint is usable
+- **Touch nose**: Threshold widened from 0.4×scale → 0.6×scale (YOLO nose keypoint drifts when hand occludes face)
+- **Clap**: Hit threshold widened from 0.45×scale → 0.7×scale. Single-wrist-center fallback widened to 0.35×scale. Dynamic convergence detection over 3 frames. Always returns gradual proximity.
+- **Raise arms**: Near-zero margin (0.01×scale) — any wrist above shoulder counts. Added **elbow fallback**: if wrists aren't visible but elbows are above shoulders, still detects. Proximity is continuous (how high above shoulder).
+- **Touch head/ears**: Thresholds widened (0.4→0.6×scale for head, 0.35→0.5×scale for ears)
+- **Wave**: Confidence gate lowered to match global 0.05
+- **REQUIRED_CONSECUTIVE**: 5 → 3 (faster confirmation, less frustrating for children)
+- All detection functions output detailed debug strings (distances, thresholds, scale) via `_detail` field
+
+**Stale closure fix (previous commit):**
+- `startCountdown` in preparation page captured stale `currentIdx` via closure → all actions detected as "wave"
+- Fixed with `currentIdxRef` ref that's updated synchronously before state
+- Asymmetric status debounce: upgrades instant, downgrades delayed 1.2s (prevents UI flicker)
+
+**File:** `app/lib/actions/actionDetector.ts`
+
 ### v2.6.0 — 2026-03-07 (Mic Logic, Detection Layout, Bubble Pop, Action Detection)
 
 **Speech Recognition — Cross-Page Consistency (3 pages):**

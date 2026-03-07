@@ -97,6 +97,9 @@ function bodyScale(keypoints: Float32Array): number {
   return s > 0 ? s : 1;
 }
 
+// ── Confidence gate — very low so skeleton-visible keypoints pass ────
+const CONF_GATE = 0.05;
+
 // ── Per-action detection rules ──────────────────────────────────────
 
 function detectTouchNose(
@@ -104,10 +107,9 @@ function detectTouchNose(
   conf: Float32Array,
   scale: number,
 ): { hit: boolean; proximity: number; detail: string } {
-  // Relaxed: only need confidence > 0.15 (wrist near nose occludes it)
-  const noseOk = conf[NOSE] > 0.15;
-  const lOk = conf[L_WRIST] > 0.15;
-  const rOk = conf[R_WRIST] > 0.15;
+  const noseOk = conf[NOSE] > CONF_GATE;
+  const lOk = conf[L_WRIST] > CONF_GATE;
+  const rOk = conf[R_WRIST] > CONF_GATE;
   if (!noseOk || (!lOk && !rOk))
     return { hit: false, proximity: 0, detail: `noseConf=${conf[NOSE]?.toFixed(2)} lW=${conf[L_WRIST]?.toFixed(2)} rW=${conf[R_WRIST]?.toFixed(2)}` };
 
@@ -115,8 +117,8 @@ function detectTouchNose(
   const dL = lOk ? dist(kp(kps, L_WRIST), nose) : Infinity;
   const dR = rOk ? dist(kp(kps, R_WRIST), nose) : Infinity;
   const minD = Math.min(dL, dR);
-  const threshold = 0.4 * scale; // widened from 0.25
-  const proximity = Math.max(0, 1 - minD / (threshold * 2)); // proximity over 2x range
+  const threshold = 0.6 * scale; // very generous — nose keypoint drifts when hand is near face
+  const proximity = Math.max(0, 1 - minD / (threshold * 2));
   return { hit: minD < threshold, proximity, detail: `minD=${minD.toFixed(1)} thr=${threshold.toFixed(1)} scale=${scale.toFixed(1)}` };
 }
 
@@ -127,10 +129,10 @@ function detectWave(
   history: Float32Array[],
 ): { hit: boolean; proximity: number; detail: string } {
   const lAbove =
-    conf[L_WRIST] > 0.2 && conf[L_SHOULDER] > 0.2 &&
+    conf[L_WRIST] > CONF_GATE && conf[L_SHOULDER] > CONF_GATE &&
     kps[L_WRIST * 2 + 1] < kps[L_SHOULDER * 2 + 1];
   const rAbove =
-    conf[R_WRIST] > 0.2 && conf[R_SHOULDER] > 0.2 &&
+    conf[R_WRIST] > CONF_GATE && conf[R_SHOULDER] > CONF_GATE &&
     kps[R_WRIST * 2 + 1] < kps[R_SHOULDER * 2 + 1];
   if (!lAbove && !rAbove) return { hit: false, proximity: 0, detail: "no wrist above shoulder" };
 
@@ -155,12 +157,12 @@ function detectClap(
   scale: number,
   history: Float32Array[] = [],
 ): { hit: boolean; proximity: number; detail: string } {
-  const hasL = conf[L_WRIST] > 0.15;
-  const hasR = conf[R_WRIST] > 0.15;
+  const hasL = conf[L_WRIST] > CONF_GATE;
+  const hasR = conf[R_WRIST] > CONF_GATE;
 
   if (hasL && hasR) {
     const d = dist(kp(kps, L_WRIST), kp(kps, R_WRIST));
-    const hitThreshold = 0.45 * scale;
+    const hitThreshold = 0.7 * scale; // very generous — hands "close" = clap
     const proximityRange = 1.5 * scale;
 
     // Dynamic: hands rapidly approaching
@@ -170,28 +172,32 @@ function detectClap(
       if (prev && prevPrev) {
         const prevD = dist(kp(prev, L_WRIST), kp(prev, R_WRIST));
         const ppD = dist(kp(prevPrev, L_WRIST), kp(prevPrev, R_WRIST));
-        if (ppD > prevD && prevD > d && d < 0.8 * scale) {
-          return { hit: true, proximity: Math.min(1, (prevD - d) / (0.08 * scale)), detail: `dynamic d=${d.toFixed(1)} prev=${prevD.toFixed(1)}` };
+        if (ppD > prevD && prevD > d && d < scale) {
+          return { hit: true, proximity: Math.min(1, (prevD - d) / (0.05 * scale)), detail: `dynamic d=${d.toFixed(2)} prev=${prevD.toFixed(2)}` };
         }
       }
     }
 
-    if (d < hitThreshold) return { hit: true, proximity: Math.max(0.5, 1 - d / hitThreshold), detail: `static d=${d.toFixed(1)} thr=${hitThreshold.toFixed(1)}` };
-    return { hit: false, proximity: Math.max(0, 1 - d / proximityRange), detail: `dist d=${d.toFixed(1)} range=${proximityRange.toFixed(1)}` };
+    if (d < hitThreshold) return { hit: true, proximity: Math.max(0.5, 1 - d / hitThreshold), detail: `static d=${d.toFixed(2)} thr=${hitThreshold.toFixed(2)}` };
+    return { hit: false, proximity: Math.max(0, 1 - d / proximityRange), detail: `dist d=${d.toFixed(2)} range=${proximityRange.toFixed(2)}` };
   }
 
-  // Single wrist near center
+  // Single wrist near body center — when hands clap, one wrist occludes the other
   if (hasL || hasR) {
     const wristIdx = hasL ? L_WRIST : R_WRIST;
-    const shoulderOk = conf[L_SHOULDER] > 0.2 && conf[R_SHOULDER] > 0.2;
+    const shoulderOk = conf[L_SHOULDER] > CONF_GATE && conf[R_SHOULDER] > CONF_GATE;
     if (shoulderOk) {
       const midX = (kps[L_SHOULDER * 2] + kps[R_SHOULDER * 2]) / 2;
+      const wristY = kps[wristIdx * 2 + 1];
+      const shoulderY = (kps[L_SHOULDER * 2 + 1] + kps[R_SHOULDER * 2 + 1]) / 2;
       const dCenter = Math.abs(kps[wristIdx * 2] - midX);
-      const centerThreshold = 0.2 * scale;
-      if (dCenter < centerThreshold) {
-        return { hit: true, proximity: Math.max(0.4, 1 - dCenter / centerThreshold), detail: `center dC=${dCenter.toFixed(1)} thr=${centerThreshold.toFixed(1)}` };
+      const centerThreshold = 0.35 * scale;
+      // Wrist must be in front of body (between shoulders and hips vertically)
+      const inFront = wristY > shoulderY - 0.2 * scale;
+      if (dCenter < centerThreshold && inFront) {
+        return { hit: true, proximity: Math.max(0.5, 1 - dCenter / centerThreshold), detail: `1wrist-center dC=${dCenter.toFixed(2)} thr=${centerThreshold.toFixed(2)}` };
       }
-      return { hit: false, proximity: Math.max(0, 0.3 * (1 - dCenter / (0.5 * scale))), detail: `1wrist dC=${dCenter.toFixed(1)}` };
+      return { hit: false, proximity: Math.max(0.1, 0.4 * (1 - dCenter / (0.6 * scale))), detail: `1wrist dC=${dCenter.toFixed(2)} inFront=${inFront}` };
     }
   }
 
@@ -203,34 +209,55 @@ function detectRaiseArms(
   conf: Float32Array,
   scale: number,
 ): { hit: boolean; proximity: number; detail: string } {
-  const hasLeft = conf[L_WRIST] > 0.15 && conf[L_SHOULDER] > 0.15;
-  const hasRight = conf[R_WRIST] > 0.15 && conf[R_SHOULDER] > 0.15;
-  if (!hasLeft && !hasRight) return { hit: false, proximity: 0, detail: `noKP lW=${conf[L_WRIST]?.toFixed(2)} rW=${conf[R_WRIST]?.toFixed(2)}` };
+  // Accept ANY confidence — if skeleton is drawn, keypoints exist
+  const hasLeft = conf[L_WRIST] > CONF_GATE && conf[L_SHOULDER] > CONF_GATE;
+  const hasRight = conf[R_WRIST] > CONF_GATE && conf[R_SHOULDER] > CONF_GATE;
+  // Fallback: check elbows (indices 7, 8) if wrists not visible
+  const L_ELBOW = 7, R_ELBOW = 8;
+  const hasLeftElbow = !hasLeft && conf[L_ELBOW] > CONF_GATE && conf[L_SHOULDER] > CONF_GATE;
+  const hasRightElbow = !hasRight && conf[R_ELBOW] > CONF_GATE && conf[R_SHOULDER] > CONF_GATE;
 
-  const margin = 0.08 * scale;
-  const maxRaise = 0.5 * scale;
+  if (!hasLeft && !hasRight && !hasLeftElbow && !hasRightElbow)
+    return { hit: false, proximity: 0, detail: `noKP lW=${conf[L_WRIST]?.toFixed(2)} rW=${conf[R_WRIST]?.toFixed(2)} lS=${conf[L_SHOULDER]?.toFixed(2)} rS=${conf[R_SHOULDER]?.toFixed(2)}` };
 
+  // In image coords, Y increases downward. Wrist above shoulder = wrist_y < shoulder_y = positive diff.
+  const margin = 0.01 * scale; // near-zero margin — any raise counts
   let bestProximity = 0;
   let hit = false;
   let detail = "";
 
+  // Check wrists
   if (hasLeft) {
     const diff = kps[L_SHOULDER * 2 + 1] - kps[L_WRIST * 2 + 1];
     if (diff > margin) hit = true;
-    const p = Math.max(0, (diff + 0.1 * scale) / maxRaise); // offset so arms-at-sides gives ~0.2
+    const p = Math.max(0, (diff + 0.15 * scale) / (0.4 * scale));
     bestProximity = Math.max(bestProximity, p);
-    detail += `L:diff=${diff.toFixed(1)} `;
+    detail += `Lw:diff=${diff.toFixed(3)} `;
   }
-
   if (hasRight) {
     const diff = kps[R_SHOULDER * 2 + 1] - kps[R_WRIST * 2 + 1];
     if (diff > margin) hit = true;
-    const p = Math.max(0, (diff + 0.1 * scale) / maxRaise);
+    const p = Math.max(0, (diff + 0.15 * scale) / (0.4 * scale));
     bestProximity = Math.max(bestProximity, p);
-    detail += `R:diff=${diff.toFixed(1)} `;
+    detail += `Rw:diff=${diff.toFixed(3)} `;
+  }
+  // Fallback: elbows above shoulders also counts
+  if (hasLeftElbow) {
+    const diff = kps[L_SHOULDER * 2 + 1] - kps[L_ELBOW * 2 + 1];
+    if (diff > 0.05 * scale) hit = true;
+    const p = Math.max(0, (diff + 0.1 * scale) / (0.3 * scale));
+    bestProximity = Math.max(bestProximity, p);
+    detail += `Le:diff=${diff.toFixed(3)} `;
+  }
+  if (hasRightElbow) {
+    const diff = kps[R_SHOULDER * 2 + 1] - kps[R_ELBOW * 2 + 1];
+    if (diff > 0.05 * scale) hit = true;
+    const p = Math.max(0, (diff + 0.1 * scale) / (0.3 * scale));
+    bestProximity = Math.max(bestProximity, p);
+    detail += `Re:diff=${diff.toFixed(3)} `;
   }
 
-  detail += `margin=${margin.toFixed(1)} scale=${scale.toFixed(1)}`;
+  detail += `margin=${margin.toFixed(3)} scale=${scale.toFixed(3)}`;
   return { hit, proximity: Math.min(1, bestProximity), detail };
 }
 
@@ -239,17 +266,17 @@ function detectTouchHead(
   conf: Float32Array,
   scale: number,
 ): { hit: boolean; proximity: number; detail: string } {
-  const noseOk = conf[NOSE] > 0.15;
-  const lOk = conf[L_WRIST] > 0.15;
-  const rOk = conf[R_WRIST] > 0.15;
+  const noseOk = conf[NOSE] > CONF_GATE;
+  const lOk = conf[L_WRIST] > CONF_GATE;
+  const rOk = conf[R_WRIST] > CONF_GATE;
   if (!noseOk || (!lOk && !rOk))
     return { hit: false, proximity: 0, detail: "low conf" };
   const nose = kp(kps, NOSE);
   const dL = lOk ? dist(kp(kps, L_WRIST), nose) : Infinity;
   const dR = rOk ? dist(kp(kps, R_WRIST), nose) : Infinity;
   const minD = Math.min(dL, dR);
-  const threshold = 0.4 * scale;
-  return { hit: minD < threshold, proximity: Math.max(0, 1 - minD / (threshold * 2)), detail: `d=${minD.toFixed(1)} thr=${threshold.toFixed(1)}` };
+  const threshold = 0.6 * scale;
+  return { hit: minD < threshold, proximity: Math.max(0, 1 - minD / (threshold * 2)), detail: `d=${minD.toFixed(2)} thr=${threshold.toFixed(2)}` };
 }
 
 function detectTouchEars(
@@ -257,14 +284,14 @@ function detectTouchEars(
   conf: Float32Array,
   scale: number,
 ): { hit: boolean; proximity: number; detail: string } {
-  const lOk = conf[L_WRIST] > 0.15 && conf[L_EAR] > 0.15;
-  const rOk = conf[R_WRIST] > 0.15 && conf[R_EAR] > 0.15;
+  const lOk = conf[L_WRIST] > CONF_GATE && conf[L_EAR] > CONF_GATE;
+  const rOk = conf[R_WRIST] > CONF_GATE && conf[R_EAR] > CONF_GATE;
   if (!lOk && !rOk) return { hit: false, proximity: 0, detail: "low conf" };
   const dL = lOk ? dist(kp(kps, L_WRIST), kp(kps, L_EAR)) : Infinity;
   const dR = rOk ? dist(kp(kps, R_WRIST), kp(kps, R_EAR)) : Infinity;
   const minD = Math.min(dL, dR);
-  const threshold = 0.35 * scale;
-  return { hit: minD < threshold, proximity: Math.max(0, 1 - minD / (threshold * 2)), detail: `d=${minD.toFixed(1)} thr=${threshold.toFixed(1)}` };
+  const threshold = 0.5 * scale;
+  return { hit: minD < threshold, proximity: Math.max(0, 1 - minD / (threshold * 2)), detail: `d=${minD.toFixed(2)} thr=${threshold.toFixed(2)}` };
 }
 
 // ── Main detection function ─────────────────────────────────────────
@@ -318,7 +345,7 @@ export function detectAction(
 
 // ── Sustained detection tracker ─────────────────────────────────────
 
-const REQUIRED_CONSECUTIVE = 5;
+const REQUIRED_CONSECUTIVE = 3;
 
 export class ActionTracker {
   private consecutiveHits = 0;
