@@ -77,7 +77,7 @@ export default function PreparationPage() {
   const hasKeypoints = keypoints && keypoints.length >= 34;
   const statusCategory = !hasKeypoints ? "no_keypoints"
     : consecutiveHits >= 5 ? "almost"
-    : (actionResult?.confidence || 0) > 0.2 ? "closer"
+    : (actionResult?.confidence || 0) > 0.1 ? "closer"
     : "looking";
 
   useEffect(() => {

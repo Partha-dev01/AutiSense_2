@@ -126,31 +126,51 @@ function detectClap(
   scale: number,
   history: Float32Array[] = [],
 ): { hit: boolean; proximity: number } {
-  // Need BOTH wrists visible for a reliable clap detection
-  const hasL = conf[L_WRIST] > 0.2;
-  const hasR = conf[R_WRIST] > 0.2;
-  if (!hasL || !hasR) return { hit: false, proximity: 0 };
+  const hasL = conf[L_WRIST] > 0.15;
+  const hasR = conf[R_WRIST] > 0.15;
 
-  const d = dist(kp(kps, L_WRIST), kp(kps, R_WRIST));
-  const threshold = 0.35 * scale;
+  // When both wrists visible: distance-based (always returns proximity)
+  if (hasL && hasR) {
+    const d = dist(kp(kps, L_WRIST), kp(kps, R_WRIST));
+    const hitThreshold = 0.4 * scale;
+    const proximityRange = 1.2 * scale; // full range for "getting closer" feedback
 
-  // Static: hands are close together
-  if (d < threshold) return { hit: true, proximity: Math.max(0, 1 - d / threshold) };
-
-  // Dynamic: hands rapidly approaching (clap motion)
-  if (history.length >= 3) {
-    const prev = history[history.length - 2];
-    const prevPrev = history[history.length - 3];
-    if (prev && prevPrev) {
-      const prevD = dist(kp(prev, L_WRIST), kp(prev, R_WRIST));
-      const ppD = dist(kp(prevPrev, L_WRIST), kp(prevPrev, R_WRIST));
-      // Both frames show hands converging AND current distance is reasonably small
-      if (ppD > prevD && prevD > d && d < 0.6 * scale) {
-        return { hit: true, proximity: Math.min(1, (prevD - d) / (0.1 * scale)) };
+    // Dynamic: hands rapidly approaching
+    if (history.length >= 3) {
+      const prev = history[history.length - 2];
+      const prevPrev = history[history.length - 3];
+      if (prev && prevPrev) {
+        const prevD = dist(kp(prev, L_WRIST), kp(prev, R_WRIST));
+        const ppD = dist(kp(prevPrev, L_WRIST), kp(prevPrev, R_WRIST));
+        if (ppD > prevD && prevD > d && d < 0.7 * scale) {
+          return { hit: true, proximity: Math.min(1, (prevD - d) / (0.08 * scale)) };
+        }
       }
     }
+
+    // Static: hands close together
+    if (d < hitThreshold) return { hit: true, proximity: Math.max(0.5, 1 - d / hitThreshold) };
+
+    // Proximity feedback: always show how close hands are
+    return { hit: false, proximity: Math.max(0, 1 - d / proximityRange) };
   }
-  return { hit: false, proximity: Math.max(0, 1 - d / (0.5 * scale)) };
+
+  // Single wrist near body center (other hand occluded = hands together)
+  if (hasL || hasR) {
+    const wristIdx = hasL ? L_WRIST : R_WRIST;
+    const shoulderOk = conf[L_SHOULDER] > 0.2 && conf[R_SHOULDER] > 0.2;
+    if (shoulderOk) {
+      const midX = (kps[L_SHOULDER * 2] + kps[R_SHOULDER * 2]) / 2;
+      const dCenter = Math.abs(kps[wristIdx * 2] - midX);
+      const centerThreshold = 0.15 * scale;
+      if (dCenter < centerThreshold) {
+        return { hit: true, proximity: Math.max(0.4, 1 - dCenter / centerThreshold) };
+      }
+      return { hit: false, proximity: Math.max(0, 0.3 * (1 - dCenter / (0.5 * scale))) };
+    }
+  }
+
+  return { hit: false, proximity: 0 };
 }
 
 function detectRaiseArms(
@@ -158,23 +178,32 @@ function detectRaiseArms(
   conf: Float32Array,
   scale: number,
 ): { hit: boolean; proximity: number } {
-  // Need at least one side with both wrist + shoulder confident
-  const hasLeft = conf[L_WRIST] > 0.25 && conf[L_SHOULDER] > 0.25;
-  const hasRight = conf[R_WRIST] > 0.25 && conf[R_SHOULDER] > 0.25;
+  const hasLeft = conf[L_WRIST] > 0.2 && conf[L_SHOULDER] > 0.2;
+  const hasRight = conf[R_WRIST] > 0.2 && conf[R_SHOULDER] > 0.2;
   if (!hasLeft && !hasRight) return { hit: false, proximity: 0 };
 
-  // Wrist must be clearly above shoulder (margin = 15% of torso height)
-  const margin = 0.15 * scale;
-  let lUp = false;
-  let rUp = false;
+  // How far above shoulder each wrist is (positive = above)
+  // Shoulder Y is larger when lower on screen (y increases downward)
+  const margin = 0.1 * scale; // required margin above shoulder for "hit"
+  const maxRaise = 0.6 * scale; // full range for proximity calculation
 
-  if (hasLeft) lUp = kps[L_WRIST * 2 + 1] < kps[L_SHOULDER * 2 + 1] - margin;
-  if (hasRight) rUp = kps[R_WRIST * 2 + 1] < kps[R_SHOULDER * 2 + 1] - margin;
+  let bestProximity = 0;
+  let hit = false;
 
-  // Either arm raised counts, but need clear raise
-  const hit = lUp || rUp;
-  const proximity = (lUp ? 0.5 : 0) + (rUp ? 0.5 : 0);
-  return { hit, proximity: Math.min(1, proximity) };
+  if (hasLeft) {
+    const diff = kps[L_SHOULDER * 2 + 1] - kps[L_WRIST * 2 + 1]; // positive when wrist above shoulder
+    if (diff > margin) hit = true;
+    // Proximity: how much of the way from hip-level to above-shoulder
+    bestProximity = Math.max(bestProximity, Math.max(0, diff / maxRaise));
+  }
+
+  if (hasRight) {
+    const diff = kps[R_SHOULDER * 2 + 1] - kps[R_WRIST * 2 + 1];
+    if (diff > margin) hit = true;
+    bestProximity = Math.max(bestProximity, Math.max(0, diff / maxRaise));
+  }
+
+  return { hit, proximity: Math.min(1, bestProximity) };
 }
 
 function detectTouchHead(

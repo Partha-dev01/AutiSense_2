@@ -1087,6 +1087,57 @@ A complete kids-facing dashboard with bottom tab navigation, daily games, AI cha
 
 **Commits:** `6c36e99`, `78bc739`, `6e1500f`, `9787c2f`, `1788d1f`, `d22c272`
 
+### v2.6.0 — 2026-03-07 (Mic Logic, Detection Layout, Bubble Pop, Action Detection)
+
+**Speech Recognition — Cross-Page Consistency (3 pages):**
+- Applied working patterns from `communication/page.tsx` (reference, untouched) to 3 other pages
+- **Chat page** (`kid-dashboard/chat`): Added `continuous: true`, `interimResults: true`, `maxAlternatives: 3`, 10s hard timeout, restart logic in `onend`, accumulates full transcript across interim results
+- **Speech game** (`kid-dashboard/speech`): Added `maxAlternatives: 3`, replaced simple `includes()` with fuzzy matching (edit distance ≤1, prefix, substring), checks all alternatives
+- **Audio intake** (`intake/audio`): Added `maxAlternatives: 3`, checks all alternatives for best sentence match
+
+**Detection Page Layout — Complete Restructure:**
+- Removed redundant "Elapsed" timer card (already shown below camera)
+- Camera column 420px (medium, left), results panel 1fr (right)
+- ASD Risk gauge full-width at top of right panel (100px ring)
+- Body Behavior + Face Analysis side-by-side below gauge
+- Added animated loading skeleton (pulsing placeholder bars) for Face Analysis while model loads
+- `main-wide` widened to 1200px
+
+**Social Stories V2 — Dark Mode Fix:**
+- Removed hardcoded light color fallbacks: `var(--peach-50, #fff5f0)` → `var(--peach-50)`, `var(--peach-200, #ffcdb2)` → `var(--peach-200)`
+- All cards now properly use CSS variables in both light and dark themes
+
+**Bubble Pop Game — Complete Rewrite:**
+- Game is now 30-second timed: pop as many rounds as possible
+- Each correct pop shows "Nice!/Great!/Awesome!" feedback, then spawns a completely fresh layout with new target
+- Bubbles scattered at random (x,y) positions across the play area with 18% minimum spacing overlap prevention
+- Glossy bubble styling: inset shadows, translucent border, gentle idle wobble animation
+- Scoring: total pops, accuracy %, rounds cleared, average speed per pop
+- Timer bar with urgent red flash animation at ≤5s remaining
+
+**Action Detection — Clap & Raise Arms Fix (3 iterations):**
+- **Root cause identified**: `detectClap` and `detectRaiseArms` returned `proximity: 0` when conditions weren't fully met — unlike `detectTouchNose` which always returns distance-based proximity. The UI showed "Getting closer!" only when `confidence > 0.1`, but these functions were binary (0 or hit).
+- **Iteration 1**: Relaxed confidence gates, OR logic, single-wrist fallback → caused false positives (clap fired on any standing pose, raise fired on slight arm movement)
+- **Iteration 2**: Tightened back — both wrists required for clap (0.35×scale), raise margin 0.15×scale, REQUIRED_CONSECUTIVE 6→8 → no false positives but no proximity feedback either
+- **Iteration 3 (final)**: Rewrote both functions with **gradual proximity feedback**:
+  - `detectClap`: Always returns distance-based proximity (how close hands are, range 1.2×scale). Both-wrists path: static hit at 0.4×scale, dynamic convergence over 3 frames. Single-wrist fallback: center proximity with 0.15×scale threshold for hit.
+  - `detectRaiseArms`: Proximity = how high wrist is relative to shoulder (diff/maxRaise), not binary. Hit when wrist ≥0.1×scale above shoulder. Always shows gradual progress as arms rise.
+  - Wave: variance threshold lowered 0.015→0.01 (easier to detect)
+- `REQUIRED_CONSECUTIVE`: 8 (prevents false positives while allowing genuine actions)
+- Preparation page: "Getting closer!" threshold lowered to `confidence > 0.1`
+
+**Files modified:**
+- `app/kid-dashboard/chat/page.tsx` — speech recognition overhaul
+- `app/kid-dashboard/speech/page.tsx` — fuzzy matching + maxAlternatives
+- `app/intake/audio/page.tsx` — maxAlternatives + all alternatives
+- `app/kid-dashboard/detection/page.tsx` — grid layout restructure
+- `app/components/DetectorResultsPanel.tsx` — removed timer, ASD gauge top, loading skeleton
+- `app/globals.css` — video-capture-grid 420px/1fr, main-wide 1200px
+- `app/kid-dashboard/games/social-stories-v2/page.tsx` — dark mode color fixes
+- `app/kid-dashboard/games/bubble-pop/page.tsx` — complete rewrite (30s timed rounds)
+- `app/lib/actions/actionDetector.ts` — gradual proximity for clap/raise, easier wave
+- `app/intake/preparation/page.tsx` — 8 dots, lower "closer" threshold
+
 ### v2.5.3 — 2026-03-07 (Speech Recognition Fix)
 
 **Word Echo — Detection & Matching:**
