@@ -7,6 +7,7 @@ import { addGameActivity } from "../../../lib/db/gameActivity.repository";
 import { updateStreak } from "../../../lib/db/streak.repository";
 import NavLogo from "../../../components/NavLogo";
 import ThemeToggle from "../../../components/ThemeToggle";
+import { useTheme } from "../../../hooks/useTheme";
 
 type Screen = "start" | "play" | "result";
 
@@ -65,7 +66,7 @@ const statStyle = { fontSize: "1.8rem", fontFamily: "'Fredoka',sans-serif", font
 const statLabel = { fontSize: "0.82rem", color: "var(--text-secondary)", fontWeight: 600 as const };
 
 export default function MatchNumbersPage() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { theme, toggle: toggleTheme } = useTheme();
   const [screen, setScreen] = useState<Screen>("start");
   const [rounds, setRounds] = useState<Round[]>([]);
   const [roundIndex, setRoundIndex] = useState(0);
@@ -76,16 +77,6 @@ export default function MatchNumbersPage() {
   const [elapsed, setElapsed] = useState(0);
   const [saved, setSaved] = useState(false);
   const [level, setLevel] = useState(1);
-
-  useEffect(() => {
-    const s = (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(s as "light" | "dark");
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
 
   const startGame = useCallback(() => {
     const childId = (typeof window !== "undefined" && localStorage.getItem("autisense-active-child-id")) || "default";
@@ -171,7 +162,7 @@ export default function MatchNumbersPage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <Link href="/kid-dashboard/games" className="btn btn-outline" style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem" }}>
             ← Games
           </Link>

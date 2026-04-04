@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, Mic, Globe } from "lucide-react";
+import { useTheme } from "../../hooks/useTheme";
 
 const STEPS = [
   "Welcome", "Profile", "Device", "Communicate", "Behavior",
@@ -21,8 +22,8 @@ interface DeviceCheck {
 }
 
 export default function DeviceCheckPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const router = useRouter();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const iconMap: Record<string, React.ReactNode> = {
     camera: <Camera size={18} />,
     microphone: <Mic size={18} />,
@@ -56,20 +57,6 @@ export default function DeviceCheckPage() {
   const allPassed = checks.every((c) => c.status === "pass");
   const anyFailed = checks.some((c) => c.status === "fail");
   const isChecking = checks.some((c) => c.status === "checking");
-
-  useEffect(() => {
-    const saved = document.documentElement.getAttribute("data-theme") as
-      | "light"
-      | "dark"
-      | null;
-    if (saved) setTheme(saved);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-  };
 
   const updateCheck = useCallback(
     (id: string, updates: Partial<DeviceCheck>) => {

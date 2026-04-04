@@ -11,13 +11,14 @@ import UserMenu from "../../components/UserMenu";
 import ThemeToggle from "../../components/ThemeToggle";
 import { useAuthGuard } from "../../hooks/useAuthGuard";
 import type { PipelineResult } from "../../types/inference";
+import { useTheme } from "../../hooks/useTheme";
 
 // Detection uses "elapsed" mode — no countdown needed
 
 export default function DetectionPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const { loading: authLoading, isAuthenticated } = useAuthGuard();
 
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [started, setStarted] = useState(false);
   const [stopped, setStopped] = useState(false);
   const [camReady, setCamReady] = useState(false);
@@ -35,26 +36,6 @@ export default function DetectionPage() {
     useDetectorInference(videoRef, canvasRef, camReady && started && !stopped);
 
   // Always run both body + face pipelines
-  useEffect(() => {
-    setModality("both");
-  }, [setModality]);
-
-  // Persist latest result for the stopped summary screen
-  useEffect(() => {
-    if (result) finalResultRef.current = result;
-  }, [result]);
-
-  // Theme init
-  useEffect(() => {
-    const saved =
-      (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(saved as "light" | "dark");
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
 
   // ---- Camera ----
   const startCamera = useCallback(async () => {
@@ -181,7 +162,7 @@ export default function DetectionPage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <Link
             href="/kid-dashboard"
             className="btn btn-outline"

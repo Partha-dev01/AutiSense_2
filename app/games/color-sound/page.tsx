@@ -8,6 +8,7 @@ import { updateStreak } from "../../lib/db/streak.repository";
 import { speakText } from "../../lib/audio/ttsHelper";
 import NavLogo from "../../components/NavLogo";
 import ThemeToggle from "../../components/ThemeToggle";
+import { useTheme } from "../../hooks/useTheme";
 
 type Screen = "start" | "play" | "result";
 
@@ -65,7 +66,7 @@ function playTone(frequency: number, duration: number = 400, onPlayingChange?: (
 }
 
 export default function ColorSoundPage() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { theme, toggle: toggleTheme } = useTheme();
   const [screen, setScreen] = useState<Screen>("start");
   const [targetColor, setTargetColor] = useState<ColorItem | null>(null);
   const [displayColors, setDisplayColors] = useState<ColorItem[]>([]);
@@ -79,17 +80,6 @@ export default function ColorSoundPage() {
   const [hintText, setHintText] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [attemptsThisRound, setAttemptsThisRound] = useState(0);
-
-  useEffect(() => {
-    const saved =
-      (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(saved as "light" | "dark");
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
 
   const generateRound = useCallback(
     (level: number) => {
@@ -206,7 +196,7 @@ export default function ColorSoundPage() {
     <div className="page">
       <nav className="nav">
         <NavLogo />
-        <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
+        <ThemeToggle theme={theme} onToggle={toggleTheme} />
       </nav>
 
       <div className="main fade fade-1" style={{ maxWidth: 500, padding: "40px 28px 80px" }}>

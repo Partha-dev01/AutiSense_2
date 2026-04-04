@@ -13,6 +13,7 @@ import ThemeToggle from "../components/ThemeToggle";
 import { Mic, Camera, Bot, MapPin, ClipboardList, Users } from "lucide-react";
 import type { ChildProfile } from "../types/childProfile";
 import type { Streak } from "../types/gameActivity";
+import { useTheme } from "../hooks/useTheme";
 
 const ACTIVE_CHILD_KEY = "autisense-active-child-id";
 const DAILY_TARGET = 3;
@@ -42,23 +43,13 @@ const gameCards = [
 ];
 
 export default function KidDashboardPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const { loading: authLoading, isAuthenticated } = useAuthGuard();
   const [profiles, setProfiles] = useState<ChildProfile[]>([]);
   const [activeChildId, setActiveChildId] = useState<string>("");
   const [streak, setStreak] = useState<Streak>({ childId: "", currentStreak: 0, longestStreak: 0, lastPlayDate: "" });
   const [todayCount, setTodayCount] = useState(0);
   const [recentGameIds, setRecentGameIds] = useState<string[]>([]);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-
-  useEffect(() => {
-    const saved = (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(saved as "light" | "dark");
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
 
   const loadData = useCallback(async () => {
     const all = await listProfiles();
@@ -117,7 +108,7 @@ export default function KidDashboardPage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <UserMenu />
         </div>
       </nav>

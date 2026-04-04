@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSession } from "../../lib/db/session.repository";
 import { setCurrentSessionId } from "../../lib/session/currentSession";
+import { useTheme } from "../../hooks/useTheme";
 
 const STEPS = [
   "Welcome", "Profile", "Device", "Communicate", "Behavior",
@@ -33,22 +34,8 @@ const LANGUAGES = [
 type Gender = "boy" | "girl" | "other" | "";
 
 export default function ProfilePage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const router = useRouter();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-
-  useEffect(() => {
-    const saved = document.documentElement.getAttribute("data-theme") as
-      | "light"
-      | "dark"
-      | null;
-    if (saved) setTheme(saved);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-  };
 
   const [childName, setChildName] = useState("");
   const [dob, setDob] = useState("");

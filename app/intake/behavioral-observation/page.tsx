@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { addBiomarker } from "../../lib/db/biomarker.repository";
 import { getCurrentSessionId } from "../../lib/session/currentSession";
 import SkipStageDialog from "../../components/SkipStageDialog";
+import { useTheme } from "../../hooks/useTheme";
 
 const STEPS = [
   "Welcome", "Profile", "Device", "Communicate", "Behavior",
@@ -27,8 +28,8 @@ const COLORS = [
 ];
 
 export default function BehavioralObservationPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const router = useRouter();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [started, setStarted] = useState(false);
   const [taskComplete, setTaskComplete] = useState(false);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
@@ -39,17 +40,6 @@ export default function BehavioralObservationPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const spawnRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPopRef = useRef(Date.now());
-
-  useEffect(() => {
-    const saved = document.documentElement.getAttribute("data-theme") as "light" | "dark" | null;
-    if (saved) setTheme(saved);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-  };
 
   const spawnBubble = useCallback(() => {
     const bubble: Bubble = {

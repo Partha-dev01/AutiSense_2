@@ -7,6 +7,7 @@ import { getCurrentSessionId } from "../../lib/session/currentSession";
 import { useActionCamera } from "../../hooks/useActionCamera";
 import { ACTION_META, REQUIRED_CONSECUTIVE, type ActionId } from "../../lib/actions/actionDetector";
 import SkipStageDialog from "../../components/SkipStageDialog";
+import { useTheme } from "../../hooks/useTheme";
 
 const STEPS = [
   "Welcome", "Profile", "Device", "Communicate", "Behavior",
@@ -30,8 +31,8 @@ function getConfidenceColor(c: number): string {
 }
 
 export default function PreparationPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const router = useRouter();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
 
   const [phase, setPhase] = useState<Phase>("pre_start");
   const [actionPhase, setActionPhase] = useState<ActionPhase>("countdown");
@@ -56,17 +57,6 @@ export default function PreparationPage() {
     cameraError, startCamera, stopCamera, startDetecting, stopDetecting,
     actionResult, actionDetected, consecutiveHits, keypoints,
   } = useActionCamera();
-
-  useEffect(() => {
-    const saved = document.documentElement.getAttribute("data-theme") as "light" | "dark" | null;
-    if (saved) setTheme(saved);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-  };
 
   const clearTimers = useCallback(() => {
     if (timeoutTimerRef.current) { clearTimeout(timeoutTimerRef.current); timeoutTimerRef.current = null; }

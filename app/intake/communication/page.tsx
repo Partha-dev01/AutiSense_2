@@ -6,6 +6,7 @@ import { addBiomarker } from "../../lib/db/biomarker.repository";
 import { getCurrentSessionId } from "../../lib/session/currentSession";
 import { getSession } from "../../lib/db/session.repository";
 import SkipStageDialog from "../../components/SkipStageDialog";
+import { useTheme } from "../../hooks/useTheme";
 
 const STEPS = [
   "Welcome", "Profile", "Device", "Communicate", "Behavior",
@@ -107,8 +108,8 @@ function MicVisualizer({ stream }: { stream: MediaStream | null }) {
 }
 
 export default function CommunicationPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const router = useRouter();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
 
   const [words, setWords] = useState<WordItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -132,17 +133,6 @@ export default function CommunicationPage() {
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    const saved = document.documentElement.getAttribute("data-theme") as "light" | "dark" | null;
-    if (saved) setTheme(saved);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-  };
 
   // Load dynamic words
   useEffect(() => {

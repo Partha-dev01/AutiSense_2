@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { addBiomarker } from "../../lib/db/biomarker.repository";
 import { getCurrentSessionId } from "../../lib/session/currentSession";
 import SkipStageDialog from "../../components/SkipStageDialog";
+import { useTheme } from "../../hooks/useTheme";
 
 const STEPS = [
   "Welcome", "Profile", "Device", "Communicate", "Behavior",
@@ -21,8 +22,8 @@ interface Target {
 }
 
 export default function MotorAssessmentPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const router = useRouter();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [started, setStarted] = useState(false);
   const [taskComplete, setTaskComplete] = useState(false);
   const [target, setTarget] = useState<Target | null>(null);
@@ -33,17 +34,6 @@ export default function MotorAssessmentPage() {
   const [round, setRound] = useState(0);
   const nextIdRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    const saved = document.documentElement.getAttribute("data-theme") as "light" | "dark" | null;
-    if (saved) setTheme(saved);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-  };
 
   const spawnTarget = useCallback(() => {
     // Targets get smaller over rounds for progressive difficulty

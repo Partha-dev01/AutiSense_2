@@ -7,6 +7,7 @@ import { addGameActivity } from "../../lib/db/gameActivity.repository";
 import { updateStreak } from "../../lib/db/streak.repository";
 import NavLogo from "../../components/NavLogo";
 import ThemeToggle from "../../components/ThemeToggle";
+import { useTheme } from "../../hooks/useTheme";
 
 type Screen = "start" | "play" | "result";
 type Category = "animals" | "vehicles" | "food" | "toys";
@@ -76,7 +77,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export default function SortingGamePage() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { theme, toggle: toggleTheme } = useTheme();
   const [screen, setScreen] = useState<Screen>("start");
   const [items, setItems] = useState<SortItem[]>([]);
   const [activeCategories, setActiveCategories] = useState<Category[]>(["animals", "vehicles"]);
@@ -87,17 +88,6 @@ export default function SortingGamePage() {
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [startTime, setStartTime] = useState(0);
   const [elapsed, setElapsed] = useState(0);
-
-  useEffect(() => {
-    const saved =
-      (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(saved as "light" | "dark");
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
 
   const startGame = useCallback(() => {
     const config = getDifficulty("sorting", "default");
@@ -171,7 +161,7 @@ export default function SortingGamePage() {
     <div className="page">
       <nav className="nav">
         <NavLogo />
-        <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
+        <ThemeToggle theme={theme} onToggle={toggleTheme} />
       </nav>
 
       <div className="main fade fade-1" style={{ maxWidth: 600, padding: "40px 28px 80px" }}>

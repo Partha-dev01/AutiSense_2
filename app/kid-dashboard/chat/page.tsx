@@ -9,6 +9,7 @@ import { speakText } from "../../lib/audio/ttsHelper";
 import NavLogo from "../../components/NavLogo";
 import UserMenu from "../../components/UserMenu";
 import ThemeToggle from "../../components/ThemeToggle";
+import { useTheme } from "../../hooks/useTheme";
 
 type Animal = "dog" | "cat" | "rabbit" | "parrot";
 type Screen = "select" | "chat" | "end";
@@ -31,8 +32,8 @@ const aiBubble = { ...bubbleBase, background: "var(--sage-100)", border: "2px so
 const userBubble = { ...bubbleBase, background: "var(--feature-peach, var(--feature-blue, #e0f0ff))", border: "2px solid var(--border)", borderBottomRightRadius: "4px" };
 
 export default function ChatPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const { loading: authLoading, isAuthenticated } = useAuthGuard();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [screen, setScreen] = useState<Screen>("select");
   const [animal, setAnimal] = useState<Animal | null>(null);
   const [avatarState, setAvatarState] = useState<"idle" | "talking" | "happy" | "thinking">("idle");
@@ -53,15 +54,6 @@ export default function ChatPage() {
   const sendMessageRef = useRef<(text: string) => Promise<void>>(null!);
 
   /* ---- theme ---- */
-  useEffect(() => {
-    const saved = (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(saved as "light" | "dark");
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
 
   /* ---- helpers ---- */
   const childName =
@@ -298,7 +290,7 @@ export default function ChatPage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <Link href="/kid-dashboard" className="btn btn-outline" style={{ minHeight: 36, padding: "6px 12px", fontSize: "0.82rem" }}>
             Home
           </Link>

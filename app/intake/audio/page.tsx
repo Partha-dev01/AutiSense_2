@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { addBiomarker } from "../../lib/db/biomarker.repository";
 import { getCurrentSessionId } from "../../lib/session/currentSession";
 import { getSession } from "../../lib/db/session.repository";
+import { useTheme } from "../../hooks/useTheme";
 
 const STEPS = [
   "Welcome", "Profile", "Device", "Communicate", "Visual", "Behavior",
@@ -31,8 +32,8 @@ function sentenceMatchScore(expected: string, transcript: string): number {
 }
 
 export default function AudioAssessmentPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const router = useRouter();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
 
   // Dynamic content
   const [sentences, setSentences] = useState<ContentItem[]>([]);
@@ -54,17 +55,6 @@ export default function AudioAssessmentPage() {
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    const saved = document.documentElement.getAttribute("data-theme") as "light" | "dark" | null;
-    if (saved) setTheme(saved);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-  };
 
   // Load dynamic content
   useEffect(() => {

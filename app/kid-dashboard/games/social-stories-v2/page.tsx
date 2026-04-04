@@ -7,6 +7,7 @@ import { addGameActivity } from "../../../lib/db/gameActivity.repository";
 import { updateStreak } from "../../../lib/db/streak.repository";
 import NavLogo from "../../../components/NavLogo";
 import ThemeToggle from "../../../components/ThemeToggle";
+import { useTheme } from "../../../hooks/useTheme";
 
 type Screen = "start" | "play" | "result";
 
@@ -146,7 +147,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export default function SocialStoriesV2Page() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { theme, toggle: toggleTheme } = useTheme();
   const [screen, setScreen] = useState<Screen>("start");
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -156,17 +157,6 @@ export default function SocialStoriesV2Page() {
   const [startTime, setStartTime] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    const s =
-      (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(s as "light" | "dark");
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
 
   const startGame = useCallback(() => {
     const childId =
@@ -235,7 +225,7 @@ export default function SocialStoriesV2Page() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <Link href="/kid-dashboard/games" className="btn btn-outline" style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem" }}>
             ← Games
           </Link>

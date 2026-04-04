@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { addBiomarker } from "../../lib/db/biomarker.repository";
 import { getCurrentSessionId } from "../../lib/session/currentSession";
+import { useTheme } from "../../hooks/useTheme";
 
 const STEPS = [
   "Welcome", "Profile", "Device", "Communicate", "Visual", "Behavior",
@@ -20,8 +21,8 @@ interface Stimulus {
 }
 
 export default function VisualEngagementPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const router = useRouter();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [started, setStarted] = useState(false);
   const [taskComplete, setTaskComplete] = useState(false);
   const [stimuli, setStimuli] = useState<Stimulus[]>([]);
@@ -31,17 +32,6 @@ export default function VisualEngagementPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const nextId = useRef(0);
-
-  useEffect(() => {
-    const saved = document.documentElement.getAttribute("data-theme") as "light" | "dark" | null;
-    if (saved) setTheme(saved);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-  };
 
   const generateStimuli = useCallback(() => {
     const social = ["😊", "👶", "👋", "🤗"];

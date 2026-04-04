@@ -10,6 +10,7 @@ import NavLogo from "../../components/NavLogo";
 import UserMenu from "../../components/UserMenu";
 import ThemeToggle from "../../components/ThemeToggle";
 import type { MapMarker } from "../../components/LeafletMap";
+import { useTheme } from "../../hooks/useTheme";
 
 const LeafletMapDynamic = dynamic(() => import("../../components/LeafletMap"), { ssr: false });
 
@@ -124,18 +125,10 @@ const distance = (lat1: number, lng1: number, lat2: number, lng2: number): numbe
    ═══════════════════════════════════════════════════════════════════════ */
 
 export default function NearbyHelpPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const { loading: authLoading, isAuthenticated } = useAuthGuard();
 
   /* Theme */
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  useEffect(() => {
-    const saved = (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(saved as "light" | "dark");
-  }, []);
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
 
   /* State */
   const [search, setSearch] = useState("");
@@ -282,7 +275,7 @@ export default function NearbyHelpPage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <Link
             href="/kid-dashboard"
             className="btn btn-outline"

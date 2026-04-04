@@ -10,6 +10,7 @@ import { aggregateBiomarkers } from "../../../lib/db/biomarker.repository";
 import type { ChildProfile } from "../../../types/childProfile";
 import type { Session } from "../../../types/session";
 import type { BiomarkerAggregate } from "../../../types/biomarker";
+import { useTheme } from "../../../hooks/useTheme";
 import {
   LineChart,
   Line,
@@ -37,24 +38,13 @@ export default function ChildDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { theme, toggle: toggleTheme } = useTheme();
   const { id } = use(params);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [profile, setProfile] = useState<ChildProfile | null>(null);
   const [childSessions, setChildSessions] = useState<Session[]>([]);
   const [chartData, setChartData] = useState<ScorePoint[]>([]);
   const [domainData, setDomainData] = useState<DomainBar[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const saved =
-      (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(saved as "light" | "dark");
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
 
   const loadData = useCallback(async () => {
     try {
@@ -127,7 +117,7 @@ export default function ChildDetailPage({
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
       </nav>
 

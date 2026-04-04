@@ -10,6 +10,7 @@ import { getCurrentSessionId } from "../../lib/session/currentSession";
 import { getUserMediaWithFallback, getCameraErrorMessage } from "../../lib/camera/cameraUtils";
 import type { PipelineResult } from "../../types/inference";
 import SkipStageDialog from "../../components/SkipStageDialog";
+import { useTheme } from "../../hooks/useTheme";
 
 const STEPS = [
   "Welcome", "Profile", "Device", "Communicate", "Behavior",
@@ -20,8 +21,8 @@ const ASSESSMENT_SECONDS = 30; // 30 seconds
 const BIOMARKER_SAVE_INTERVAL = 5_000; // save a snapshot every 5 seconds
 
 export default function VideoCapturePage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const router = useRouter();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [started, setStarted] = useState(false);
   const [taskComplete, setTaskComplete] = useState(false);
   const [timeLeft, setTimeLeft] = useState(ASSESSMENT_SECONDS);
@@ -45,17 +46,6 @@ export default function VideoCapturePage() {
   useEffect(() => {
     latestResultRef.current = result;
   }, [result]);
-
-  useEffect(() => {
-    const saved = document.documentElement.getAttribute("data-theme") as "light" | "dark" | null;
-    if (saved) setTheme(saved);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-  };
 
   const handleSkipStage = useCallback(async () => {
     if (streamRef.current) {

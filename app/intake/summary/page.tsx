@@ -9,6 +9,7 @@ import { getSession, completeSession } from "../../lib/db/session.repository";
 import { isOnline, flushSyncQueue } from "../../lib/sync/sync";
 import type { BiomarkerAggregate } from "../../types/biomarker";
 import type { Session } from "../../types/session";
+import { useTheme } from "../../hooks/useTheme";
 
 const STEPS = [
   "Welcome", "Profile", "Device", "Communicate", "Behavior",
@@ -34,6 +35,7 @@ export default function SummaryPageWrapper() {
 }
 
 function SummaryPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("sessionId") || (typeof window !== "undefined" ? localStorage.getItem("autisense-current-session-id") : null);
@@ -44,21 +46,6 @@ function SummaryPage() {
   const [syncStatus, setSyncStatus] = useState<
     "idle" | "syncing" | "done" | "offline"
   >("idle");
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-
-  useEffect(() => {
-    const saved = document.documentElement.getAttribute("data-theme") as
-      | "light"
-      | "dark"
-      | null;
-    if (saved) setTheme(saved);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-  };
 
   // Load data from IndexedDB
   useEffect(() => {

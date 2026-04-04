@@ -20,6 +20,7 @@ import { speakText, checkMicSupport, stopSpeaking } from "../../lib/audio/ttsHel
 import NavLogo from "../../components/NavLogo";
 import UserMenu from "../../components/UserMenu";
 import ThemeToggle from "../../components/ThemeToggle";
+import { useTheme } from "../../hooks/useTheme";
 
 type Screen = "start" | "play" | "result";
 
@@ -56,9 +57,9 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export default function SpeechPracticePage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const { loading: authLoading } = useAuthGuard();
 
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [screen, setScreen] = useState<Screen>("start");
   const [words, setWords] = useState<string[]>([]);
   const [wordIdx, setWordIdx] = useState(0);
@@ -72,20 +73,6 @@ export default function SpeechPracticePage() {
   const [hasSpeechApi, setHasSpeechApi] = useState(true);
   const [micError, setMicError] = useState<string | null>(null);
   const [playingAudio, setPlayingAudio] = useState(false);
-
-
-  useEffect(() => {
-    const s = (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(s as "light" | "dark");
-    const SR = (window as unknown as Record<string, unknown>).SpeechRecognition
-      || (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
-    setHasSpeechApi(!!SR);
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
 
   /* ---------- elapsed timer ---------- */
   useEffect(() => {
@@ -340,7 +327,7 @@ export default function SpeechPracticePage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <Link
             href="/kid-dashboard"
             className="btn btn-outline"

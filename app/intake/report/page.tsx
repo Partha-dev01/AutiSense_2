@@ -6,6 +6,7 @@ import { aggregateBiomarkers } from "../../lib/db/biomarker.repository";
 import { getSession } from "../../lib/db/session.repository";
 import type { BiomarkerAggregate } from "../../types/biomarker";
 import type { Session } from "../../types/session";
+import { useTheme } from "../../hooks/useTheme";
 
 const STEPS = [
   "Welcome", "Profile", "Device", "Communicate", "Behavior",
@@ -31,10 +32,10 @@ export default function ReportPageWrapper() {
 }
 
 function ReportPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const searchParams = useSearchParams();
   const paramSessionId = searchParams.get("sessionId");
 
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [generating, setGenerating] = useState(false);
   const [reportReady, setReportReady] = useState(false);
   const [reportType, setReportType] = useState<ReportType>("summary");
@@ -50,8 +51,6 @@ function ReportPage() {
 
   // Resolve sessionId from URL params or localStorage fallback
   useEffect(() => {
-    const saved = document.documentElement.getAttribute("data-theme") as "light" | "dark" | null;
-    if (saved) setTheme(saved);
 
     if (!paramSessionId) {
       try {
@@ -85,12 +84,6 @@ function ReportPage() {
     loadData();
     return () => { cancelled = true; };
   }, [sessionId]);
-
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-  };
 
   const generateReport = useCallback(async (type: ReportType) => {
     setReportType(type);

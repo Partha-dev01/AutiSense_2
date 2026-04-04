@@ -8,6 +8,7 @@ import ThemeToggle from "../components/ThemeToggle";
 import UserMenu from "../components/UserMenu";
 import { Plus, X, Send, Trash2 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
+import { useTheme } from "../hooks/useTheme";
 
 type Category = "all" | "tip" | "milestone" | "question" | "resource";
 
@@ -45,8 +46,8 @@ const REACTION_CONFIG = [
 ];
 
 export default function FeedPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const { loading: authLoading, isAuthenticated } = useAuthGuard();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [filter, setFilter] = useState<Category>("all");
   const [content, setContent] = useState("");
@@ -56,17 +57,6 @@ export default function FeedPage() {
   const [userId, setUserId] = useState("");
   const [showCompose, setShowCompose] = useState(false);
   const [anonymous, setAnonymous] = useState(true);
-
-  useEffect(() => {
-    const saved =
-      (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(saved as "light" | "dark");
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
 
   // Get current user ID from session
   useEffect(() => {
@@ -173,7 +163,7 @@ export default function FeedPage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <Link
             href="/kid-dashboard"
             className="btn btn-outline"

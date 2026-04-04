@@ -7,6 +7,7 @@ import { addGameActivity } from "../../lib/db/gameActivity.repository";
 import { updateStreak } from "../../lib/db/streak.repository";
 import NavLogo from "../../components/NavLogo";
 import ThemeToggle from "../../components/ThemeToggle";
+import { useTheme } from "../../hooks/useTheme";
 
 type Screen = "start" | "play" | "result";
 type BreathPhase = "inhale" | "hold" | "exhale" | "rest";
@@ -47,7 +48,7 @@ function triggerHaptic() {
 }
 
 export default function BreathingGamePage() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { theme, toggle: toggleTheme } = useTheme();
   const [screen, setScreen] = useState<Screen>("start");
   const [breathPhase, setBreathPhase] = useState<BreathPhase>("inhale");
   const [phaseLabel, setPhaseLabel] = useState("Breathe In");
@@ -60,17 +61,6 @@ export default function BreathingGamePage() {
   const cycleRef = useRef(0);
   const ambientRef = useRef<{ stop: () => void } | null>(null);
   const runPhaseRef = useRef<((phaseIndex: number) => void) | null>(null);
-
-  useEffect(() => {
-    const saved =
-      (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(saved as "light" | "dark");
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
 
   const runPhase = useCallback(
     (phaseIndex: number) => {
@@ -148,7 +138,7 @@ export default function BreathingGamePage() {
     <div className="page">
       <nav className="nav">
         <NavLogo />
-        <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
+        <ThemeToggle theme={theme} onToggle={toggleTheme} />
       </nav>
 
       <div className="main fade fade-1" style={{ maxWidth: 500, padding: "40px 28px 80px" }}>

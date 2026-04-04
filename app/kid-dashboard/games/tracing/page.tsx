@@ -7,6 +7,7 @@ import { addGameActivity } from "../../../lib/db/gameActivity.repository";
 import { updateStreak } from "../../../lib/db/streak.repository";
 import NavLogo from "../../../components/NavLogo";
 import ThemeToggle from "../../../components/ThemeToggle";
+import { useTheme } from "../../../hooks/useTheme";
 
 type Screen = "start" | "play" | "result";
 interface Point { x: number; y: number }
@@ -82,7 +83,7 @@ const statLabel = { fontSize: "0.82rem", color: "var(--text-secondary)", fontWei
 /* ---------- component ---------- */
 
 export default function TracingGamePage() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { theme, toggle: toggleTheme } = useTheme();
   const [screen, setScreen] = useState<Screen>("start");
   const [shapes, setShapes] = useState<TracingShape[]>([]);
   const [shapeIdx, setShapeIdx] = useState(0);
@@ -99,18 +100,6 @@ export default function TracingGamePage() {
   const cpRef = useRef<Point[]>([]);
   const hitRef = useRef<boolean[]>([]);
   const sizeRef = useRef(0);
-
-  useEffect(() => {
-    const saved = (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(saved as "light" | "dark");
-    const cid = (typeof window !== "undefined" && localStorage.getItem("autisense-active-child-id")) || "default";
-    setChildId(cid);
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
 
   useEffect(() => {
     if (screen !== "play") return;
@@ -229,7 +218,7 @@ export default function TracingGamePage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <ThemeToggle theme={theme} onToggle={() => setTheme(t => (t === "light" ? "dark" : "light"))} />
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <Link href="/kid-dashboard/games" className="btn btn-outline" style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem" }}>
             ← Games
           </Link>

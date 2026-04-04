@@ -7,6 +7,7 @@ import { addGameActivity } from "../../lib/db/gameActivity.repository";
 import { updateStreak } from "../../lib/db/streak.repository";
 import NavLogo from "../../components/NavLogo";
 import ThemeToggle from "../../components/ThemeToggle";
+import { useTheme } from "../../hooks/useTheme";
 
 const fredoka = "'Fredoka',sans-serif";
 
@@ -91,7 +92,7 @@ function playWrongSound() {
 type Screen = "start" | "play" | "result";
 
 export default function EmotionQuizPage() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { theme, toggle: toggleTheme } = useTheme();
   const [screen, setScreen] = useState<Screen>("start");
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [current, setCurrent] = useState(0);
@@ -103,16 +104,6 @@ export default function EmotionQuizPage() {
   const [startTime, setStartTime] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    const s = (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(s as "light" | "dark");
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
 
   useEffect(() => {
     if (screen !== "play") return;
@@ -189,7 +180,7 @@ export default function EmotionQuizPage() {
     <div className="page">
       <nav className="nav">
         <NavLogo />
-        <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
+        <ThemeToggle theme={theme} onToggle={toggleTheme} />
       </nav>
 
       <div className="main fade fade-1" style={{ maxWidth: 600, padding: "40px 28px 80px" }}>

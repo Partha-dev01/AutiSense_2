@@ -8,12 +8,13 @@ import type { WeeklyReport } from "../../types/gameActivity";
 import { db } from "../../lib/db/schema";
 import NavLogo from "../../components/NavLogo";
 import ThemeToggle from "../../components/ThemeToggle";
+import { useTheme } from "../../hooks/useTheme";
 
 type View = "kid" | "parent";
 
 export default function ReportsPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const { loading: authLoading, isAuthenticated } = useAuthGuard();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [reports, setReports] = useState<WeeklyReport[]>([]);
   const [generating, setGenerating] = useState(false);
   const [selectedReport, setSelectedReport] = useState<WeeklyReport | null>(null);
@@ -28,16 +29,6 @@ export default function ReportsPage() {
     typeof window !== "undefined"
       ? localStorage.getItem("autisense-child-name") || "Superstar"
       : "Superstar";
-
-  useEffect(() => {
-    const saved = (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(saved as "light" | "dark");
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
 
   const loadReports = useCallback(async () => {
     try {
@@ -97,7 +88,7 @@ export default function ReportsPage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <Link href="/kid-dashboard" className="btn btn-outline" style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem" }}>
             Home
           </Link>

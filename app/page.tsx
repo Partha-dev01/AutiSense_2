@@ -6,24 +6,14 @@
  */
 "use client";
 import Link from "next/link";
-import { useState, useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
 import ThemeToggle from "./components/ThemeToggle";
 import UserMenu from "./components/UserMenu";
+import { useTheme } from "./hooks/useTheme";
 
 export default function LandingPage() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { theme, toggle: toggleTheme } = useTheme();
   const { user, loading, isAuthenticated, logout } = useAuth();
-
-  useEffect(() => {
-    const saved = (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(saved as "light" | "dark");
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
 
   const features = [
     {
@@ -90,7 +80,7 @@ export default function LandingPage() {
           <span>Auti<em>Sense</em></span>
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
 
           {!loading && isAuthenticated ? (
             <>
@@ -143,7 +133,9 @@ export default function LandingPage() {
         }}
       >
         <div className="breathe-orb" style={{ margin: "0 auto 32px" }}>
-          <div className="breathe-inner">{"\u{1F9E9}"}</div>
+          <div className="breathe-inner" style={{ padding: 0, overflow: "hidden" }}>
+            <img src="/logo.jpeg" alt="AutiSense" width="56" height="56" style={{ borderRadius: "50%", objectFit: "cover" }} />
+          </div>
         </div>
 
         {/* Three-pillar chips */}

@@ -9,6 +9,7 @@ import type { GameActivity } from "../../types/gameActivity";
 import NavLogo from "../../components/NavLogo";
 import ThemeToggle from "../../components/ThemeToggle";
 import { ChevronDown } from "lucide-react";
+import { useTheme } from "../../hooks/useTheme";
 
 type Tab = "today" | "week" | "alltime";
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -197,8 +198,8 @@ function GameCard({ group }: { group: GameGroup }) {
 }
 
 export default function ProgressPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const { loading: authLoading, isAuthenticated } = useAuthGuard();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [tab, setTab] = useState<Tab>("today");
   const [childId, setChildId] = useState("default");
   const [todayActs, setTodayActs] = useState<GameActivity[]>([]);
@@ -210,14 +211,6 @@ export default function ProgressPage() {
   const [lwActs, setLwActs] = useState<GameActivity[]>([]);
   const [fourWeekAvgs, setFourWeekAvgs] = useState<number[]>([0, 0, 0, 0]);
 
-  useEffect(() => {
-    const s = (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(s as "light" | "dark");
-  }, []);
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
   useEffect(() => {
     if (typeof window !== "undefined") setChildId(localStorage.getItem("autisense-active-child-id") || "default");
   }, []);
@@ -296,7 +289,7 @@ export default function ProgressPage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <ThemeToggle theme={theme} onToggle={() => setTheme(t => t === "light" ? "dark" : "light")} />
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <Link href="/kid-dashboard" className="btn btn-outline" style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.85rem" }}>Home</Link>
         </div>
       </nav>

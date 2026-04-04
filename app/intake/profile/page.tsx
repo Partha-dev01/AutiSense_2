@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, Lock, BarChart3, Trash2 } from "lucide-react";
+import { useTheme } from "../../hooks/useTheme";
 
 const STEPS = [
   "Welcome", "Profile", "Device", "Communicate", "Behavior",
@@ -10,23 +11,9 @@ const STEPS = [
 ];
 
 export default function IntakeStartPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const router = useRouter();
   const [agreed, setAgreed] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-
-  useEffect(() => {
-    const saved = document.documentElement.getAttribute("data-theme") as
-      | "light"
-      | "dark"
-      | null;
-    if (saved) setTheme(saved);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-  };
 
   const privacyPoints = [
     {

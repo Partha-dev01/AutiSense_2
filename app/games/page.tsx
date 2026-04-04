@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
 import { useAuthGuard } from "../hooks/useAuthGuard";
 import NavLogo from "../components/NavLogo";
 import ThemeToggle from "../components/ThemeToggle";
+import { useTheme } from "../hooks/useTheme";
 
 const games = [
   {
@@ -59,19 +59,8 @@ const games = [
 ];
 
 export default function GamesHubPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const { loading: authLoading, isAuthenticated } = useAuthGuard();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-
-  useEffect(() => {
-    const saved =
-      (typeof window !== "undefined" && localStorage.getItem("autisense-theme")) || "light";
-    setTheme(saved as "light" | "dark");
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (typeof window !== "undefined") localStorage.setItem("autisense-theme", theme);
-  }, [theme]);
 
   if (authLoading || !isAuthenticated) {
     return (
@@ -87,7 +76,7 @@ export default function GamesHubPage() {
       <nav className="nav">
         <NavLogo />
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))} />
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <Link
             href="/kid-dashboard"
             className="btn btn-outline"
