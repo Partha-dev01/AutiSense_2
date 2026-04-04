@@ -13,7 +13,7 @@ import { useTheme } from "./hooks/useTheme";
 
 export default function LandingPage() {
   const { theme, toggle: toggleTheme } = useTheme();
-  const { user, loading, isAuthenticated, logout } = useAuth();
+  const { user: _user, loading, isAuthenticated, logout } = useAuth();
 
   const features = [
     {

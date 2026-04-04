@@ -127,7 +127,7 @@ export default function CommunicationPage() {
   // Shared mic stream — acquired once on start, used by visualizer + kept alive
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   const addDebug = useCallback((_msg: string) => { /* debug removed */ }, []);
 
   const recognitionRef = useRef<any>(null);
@@ -458,7 +458,7 @@ export default function CommunicationPage() {
     await new Promise((r) => setTimeout(r, 300));
     setWordState("listening");
     startListening(word.text);
-  }, [currentIdx, words, speakWord, startListening, micStream, acquireMic, addDebug]);
+  }, [currentIdx, words, speakWord, startListening, micStream, acquireMic]);
 
   // Start the test
   const beginTest = useCallback(async () => {

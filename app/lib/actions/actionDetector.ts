@@ -70,7 +70,7 @@ function debugLog(entry: Omit<DebugEntry, "ts">) {
   DEBUG_LOG.push({ ...entry, ts: Date.now() });
   if (DEBUG_LOG.length > MAX_DEBUG) DEBUG_LOG.shift();
   if (typeof window !== "undefined") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     (window as any).__actionDebug = DEBUG_LOG;
   }
 }
@@ -465,7 +465,7 @@ export class ActionTracker {
       this.confirmed = true;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const fnDetail = (result as any)._detail ?? "";
     debugLog({
       action,

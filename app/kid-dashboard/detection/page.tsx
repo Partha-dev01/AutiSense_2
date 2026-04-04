@@ -32,7 +32,7 @@ export default function DetectionPage() {
   const startingRef = useRef(false);
   const finalResultRef = useRef<PipelineResult | null>(null);
 
-  const { result, isModelLoaded, error, modelError, backend, setModality } =
+  const { result, isModelLoaded, error, modelError, backend, setModality: _setModality } =
     useDetectorInference(videoRef, canvasRef, camReady && started && !stopped);
 
   // Always run both body + face pipelines

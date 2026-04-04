@@ -92,7 +92,7 @@ export default function TracingGamePage() {
   const [startTime, setStartTime] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [childId, setChildId] = useState("default");
+  const [childId, _setChildId] = useState("default");
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawingRef = useRef(false);

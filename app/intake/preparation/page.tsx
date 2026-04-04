@@ -94,7 +94,7 @@ export default function PreparationPage() {
       stableStatusRef.current = statusCategory;
       setDisplayStatus(statusCategory);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [statusCategory, actionPhase]);
 
   // Debounce hits display — update only on significant change

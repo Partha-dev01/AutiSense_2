@@ -70,7 +70,7 @@ export default function SpeechPracticePage() {
   const [feedbackOk, setFeedbackOk] = useState(false);
   const [listening, setListening] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [hasSpeechApi, setHasSpeechApi] = useState(true);
+  const [hasSpeechApi, _setHasSpeechApi] = useState(true);
   const [micError, setMicError] = useState<string | null>(null);
   const [playingAudio, setPlayingAudio] = useState(false);
 

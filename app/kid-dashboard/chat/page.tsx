@@ -48,7 +48,7 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Voice refs — copied from working communication page pattern
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sendMessageRef = useRef<(text: string) => Promise<void>>(null!);
@@ -156,7 +156,7 @@ export default function ChatPage() {
   }, [stopRecognition]);
 
   const startListening = useCallback(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setMicError("Speech recognition is not supported in this browser. Try Chrome.");
@@ -187,7 +187,7 @@ export default function ChatPage() {
       }
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     recognition.onresult = (event: any) => {
       if (settled) return;
       // With continuous:false there's only one result set.
@@ -201,7 +201,7 @@ export default function ChatPage() {
       }
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     recognition.onerror = (e: any) => {
       if (settled) return;
       if (e.error === "not-allowed" || e.error === "audio-capture") {
@@ -252,7 +252,7 @@ export default function ChatPage() {
     }
 
     // Check mic support
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
       setMicError("Speech recognition is not supported in this browser. Try Chrome.");
