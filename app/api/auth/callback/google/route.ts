@@ -83,7 +83,13 @@ export async function GET(request: NextRequest) {
       email: string;
       name: string;
       picture: string;
+      verified_email?: boolean;
     };
+
+    // ─── Verify email is confirmed by Google ─────────────────────
+    if (profile.verified_email === false) {
+      return NextResponse.redirect(`${appUrl}/auth/login?error=email_not_verified`);
+    }
 
     // ─── Upsert user in DynamoDB ──────────────────────────────────
     const user = await upsertGoogleUser({

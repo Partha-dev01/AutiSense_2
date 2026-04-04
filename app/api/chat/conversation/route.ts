@@ -231,6 +231,13 @@ export async function POST(req: NextRequest) {
   const authResult = await requireApiAuth(req);
   if (authResult instanceof NextResponse) return authResult;
 
+  // Rate limit — 20 requests/min per user for AI routes
+  const { aiRateLimiter } = await import("../../../lib/rateLimit");
+  const rl = aiRateLimiter.check(authResult.id);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   let body: ConversationRequest;
 
   try {

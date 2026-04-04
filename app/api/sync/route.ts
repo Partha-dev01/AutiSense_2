@@ -58,11 +58,10 @@ export async function POST(req: NextRequest) {
   }
 
   const { session, biomarkers } = body;
-  if ("childName" in session) {
-    console.error(
-      "[Sync API] childName found in payload — stripping before write",
-    );
-    delete (session as Record<string, unknown>)["childName"];
+
+  // IDOR check — user can only sync their own data
+  if (session.userId !== authResult.id) {
+    return NextResponse.json({ error: "userId mismatch" }, { status: 403 });
   }
 
   const sessionsTable = process.env.DYNAMODB_SESSIONS_TABLE;
@@ -74,16 +73,26 @@ export async function POST(req: NextRequest) {
 
   const docClient = getDocClient();
 
+  // Allowlist session fields — prevent mass assignment
+  const sessionItem = {
+    id: session.id,
+    userId: session.userId,
+    ageMonths: session.ageMonths,
+    language: session.language,
+    gender: session.gender,
+    createdAt: session.createdAt,
+    completedAt: session.completedAt,
+    status: session.status,
+    synced: true,
+    ttl: Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60,
+  };
+
   try {
     // Write session record
     await docClient.send(
       new PutCommand({
         TableName: sessionsTable,
-        Item: {
-          ...session,
-          // Add a TTL of 1 year (for GDPR data retention)
-          ttl: Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60,
-        },
+        Item: sessionItem,
         // Idempotency: skip if already synced (same sessionId)
         ConditionExpression: "attribute_not_exists(id)",
       }),
@@ -106,16 +115,28 @@ export async function POST(req: NextRequest) {
 
   // Write biomarker aggregate record (optional — null if no tasks completed)
   if (biomarkers && biomarkersTable) {
+    // Allowlist biomarker fields — prevent mass assignment
+    const biomarkerItem = {
+      sessionId: biomarkers.sessionId || session.id,
+      avgGazeScore: biomarkers.avgGazeScore,
+      avgMotorScore: biomarkers.avgMotorScore,
+      avgVocalizationScore: biomarkers.avgVocalizationScore,
+      avgResponseLatencyMs: biomarkers.avgResponseLatencyMs,
+      sampleCount: biomarkers.sampleCount,
+      overallScore: biomarkers.overallScore,
+      flags: biomarkers.flags,
+      ...(biomarkers.avgAsdRisk != null && { avgAsdRisk: biomarkers.avgAsdRisk }),
+      ...(biomarkers.dominantBodyBehavior && { dominantBodyBehavior: biomarkers.dominantBodyBehavior }),
+      ...(biomarkers.dominantFaceBehavior && { dominantFaceBehavior: biomarkers.dominantFaceBehavior }),
+      ...(biomarkers.behaviorClassDistribution && { behaviorClassDistribution: biomarkers.behaviorClassDistribution }),
+      createdAt: session.createdAt,
+      ttl: Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60,
+    };
     try {
       await docClient.send(
         new PutCommand({
           TableName: biomarkersTable,
-          Item: {
-            ...biomarkers,
-            // Sort key for time-series queries
-            createdAt: session.createdAt,
-            ttl: Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60,
-          },
+          Item: biomarkerItem,
         }),
       );
     } catch (err) {

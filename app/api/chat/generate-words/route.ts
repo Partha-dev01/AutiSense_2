@@ -227,6 +227,13 @@ export async function POST(request: NextRequest) {
   const authResult = await requireApiAuth(request);
   if (authResult instanceof NextResponse) return authResult;
 
+  // Rate limit
+  const { aiRateLimiter } = await import("../../../lib/rateLimit");
+  const rl = aiRateLimiter.check(authResult.id);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   try {
     const body: GenerateRequest = await request.json();
     const { ageMonths = 36, count = 6, mode = "words" } = body;
