@@ -197,7 +197,7 @@ export default function PatternMatchPage() {
 
       <div className="main fade fade-1" style={{ maxWidth: 500, padding: "40px 28px 80px" }}>
         <Link
-          href="/games"
+          href="/kid-dashboard/games"
           className="btn btn-outline"
           style={{
             minHeight: 40,
@@ -369,7 +369,7 @@ export default function PatternMatchPage() {
               <button onClick={startGame} className="btn btn-primary" style={{ minWidth: 160 }}>
                 Play Again
               </button>
-              <Link href="/games" className="btn btn-outline" style={{ minWidth: 160 }}>
+              <Link href="/kid-dashboard/games" className="btn btn-outline" style={{ minWidth: 160 }}>
                 All Games
               </Link>
             </div>

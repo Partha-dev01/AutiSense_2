@@ -2,7 +2,7 @@
  * POST /api/report/clinical
  *
  * Generates a DSM-5 aligned clinical report using a hybrid approach:
- * 1. Deterministic template (buildMockReport) generates the full report
+ * 1. Deterministic template (buildTemplateReport) generates the full report
  * 2. Amazon Nova Pro provides structured clinical insights via short JSON prompt
  * 3. Insights are merged into the template for clinical depth
  * Falls back to the template-only report when Bedrock is unavailable.
@@ -62,7 +62,7 @@ function getBedrockClient(): BedrockRuntimeClient {
   return new BedrockRuntimeClient({ region: BEDROCK_REGION, ...(credentials && { credentials }) });
 }
 
-function buildMockReport(
+function buildTemplateReport(
   biomarkers: BiomarkerAggregate,
   childAge?: number,
 ): ClinicalResponse {
@@ -229,7 +229,7 @@ export async function POST(req: NextRequest) {
   const { biomarkers, childAge } = body;
 
   // Always generate the deterministic template first
-  const baseReport = buildMockReport(biomarkers, childAge);
+  const baseReport = buildTemplateReport(biomarkers, childAge);
 
   try {
     const client = getBedrockClient();

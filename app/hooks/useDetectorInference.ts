@@ -19,6 +19,7 @@ export interface UseDetectorInferenceReturn {
   setModality: (m: Modality) => void;
   faceEnabled: boolean;
   resetPipeline: () => void;
+  retryInit: () => void;
 }
 
 export function useDetectorInference(
@@ -150,6 +151,12 @@ export function useDetectorInference(
     workerRef.current?.postMessage({ type: "reset" });
   }, []);
 
+  const retryInit = useCallback(() => {
+    setModelError(null);
+    setIsModelLoaded(false);
+    workerRef.current?.postMessage({ type: "init" });
+  }, []);
+
   const setModality = useCallback((m: Modality) => {
     setModalityState(m);
     workerRef.current?.postMessage({ type: "setModality", modality: m });
@@ -158,6 +165,6 @@ export function useDetectorInference(
   return {
     result, isModelLoaded, error, modelError, backend,
     modality, setModality, faceEnabled: modality === "face" || modality === "both",
-    resetPipeline,
+    resetPipeline, retryInit,
   };
 }

@@ -194,7 +194,7 @@ export default function EmotionQuizPage() {
 
       <div className="main fade fade-1" style={{ maxWidth: 600, padding: "40px 28px 80px" }}>
         <Link
-          href="/games"
+          href="/kid-dashboard/games"
           className="btn btn-outline"
           style={{ minHeight: 40, padding: "8px 18px", fontSize: "0.88rem", marginBottom: 28, display: "inline-flex" }}
         >
@@ -314,7 +314,7 @@ export default function EmotionQuizPage() {
             </div>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
               <button onClick={startGame} className="btn btn-primary" style={{ minWidth: 160 }}>Play Again</button>
-              <Link href="/games" className="btn btn-outline" style={{ minWidth: 160 }}>All Games</Link>
+              <Link href="/kid-dashboard/games" className="btn btn-outline" style={{ minWidth: 160 }}>All Games</Link>
             </div>
           </div>
         )}

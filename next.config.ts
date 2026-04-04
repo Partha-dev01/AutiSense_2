@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
       { source: "/kid-dashboard/doctor-connect", destination: "/kid-dashboard/nearby-help", permanent: true },
       { source: "/kid-dashboard/map", destination: "/kid-dashboard/nearby-help", permanent: true },
       { source: "/kid-dashboard/talking", destination: "/kid-dashboard/chat", permanent: true },
+      { source: "/games/social-stories", destination: "/kid-dashboard/games/social-stories-v2", permanent: false },
     ];
   },
 

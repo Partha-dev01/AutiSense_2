@@ -38,7 +38,7 @@ export default function VideoCapturePage() {
   const biomarkerTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const latestResultRef = useRef<PipelineResult | null>(null);
 
-  const { result, isModelLoaded, error, modelError, backend, modality, setModality } =
+  const { result, isModelLoaded, error, modelError, backend, modality, setModality, retryInit } =
     useDetectorInference(videoRef, canvasRef, camReady && started);
 
   // Keep latestResultRef in sync
@@ -324,7 +324,7 @@ export default function VideoCapturePage() {
                 {/* Errors — with retry + skip for camera issues */}
                 {(camError || modelError || error) && (
                   <div style={{ marginTop: 12, padding: "12px 16px", borderRadius: "var(--r-md)", background: "var(--peach-100)", border: "2px solid var(--peach-300)", textAlign: "center" }}>
-                    <p style={{ fontSize: "0.85rem", color: "var(--peach-300)", fontWeight: 600, marginBottom: camError ? 12 : 0 }}>
+                    <p style={{ fontSize: "0.85rem", color: "var(--peach-300)", fontWeight: 600, marginBottom: (camError || modelError) ? 12 : 0 }}>
                       {camError || modelError || error}
                     </p>
                     {camError && (
@@ -332,6 +332,18 @@ export default function VideoCapturePage() {
                         <button className="btn btn-primary" style={{ minHeight: 36, padding: "6px 16px", fontSize: "0.85rem" }}
                           onClick={() => { setCamError(null); startCamera(); }}>
                           Retry Camera
+                        </button>
+                        <button className="btn btn-outline" style={{ minHeight: 36, padding: "6px 16px", fontSize: "0.85rem" }}
+                          onClick={stopEarly}>
+                          Skip Video Analysis
+                        </button>
+                      </div>
+                    )}
+                    {modelError && !camError && (
+                      <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+                        <button className="btn btn-primary" style={{ minHeight: 36, padding: "6px 16px", fontSize: "0.85rem" }}
+                          onClick={retryInit}>
+                          Retry Models
                         </button>
                         <button className="btn btn-outline" style={{ minHeight: 36, padding: "6px 16px", fontSize: "0.85rem" }}
                           onClick={stopEarly}>

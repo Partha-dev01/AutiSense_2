@@ -182,9 +182,10 @@ export default function TracingGamePage() {
   }, []);
 
   const handleDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (feedback?.startsWith("Try")) return;
     e.preventDefault(); drawingRef.current = true;
     const pos = getPos(e); if (pos) { traceRef.current = []; drawTrace(pos); }
-  }, [getPos, drawTrace]);
+  }, [getPos, drawTrace, feedback]);
 
   const handleMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault(); if (!drawingRef.current) return;

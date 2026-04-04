@@ -81,6 +81,21 @@ function browserSpeak(text: string): Promise<void> {
 }
 
 /**
+ * Stop any ongoing speech (Polly audio or browser TTS).
+ * Call this before starting SpeechRecognition to avoid Chrome audio subsystem conflicts.
+ */
+export function stopSpeaking(): void {
+  if (currentAudio) {
+    currentAudio.pause();
+    if (currentAudio.src) URL.revokeObjectURL(currentAudio.src);
+    currentAudio = null;
+  }
+  if (typeof window !== "undefined" && window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+}
+
+/**
  * Request microphone permission and check speech recognition support.
  * Returns { supported, permitted, error? }
  */

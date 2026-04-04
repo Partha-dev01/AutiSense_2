@@ -1044,7 +1044,7 @@ A complete kids-facing dashboard with bottom tab navigation, daily games, AI cha
 
 **Clinical Report Optimization:**
 - Replaced full-prose LLM prompt with hybrid template + AI insights approach
-- Deterministic template (`buildMockReport`) generates the complete report with scores, thresholds, flags, and disclaimers
+- Deterministic template (`buildTemplateReport`) generates the complete report with scores, thresholds, flags, and disclaimers
 - Nova Pro now returns only a small structured JSON with clinical interpretations (severity level, DSM-5 criterion mappings, clinical impression, priority recommendations, differential considerations)
 - `mergeAiInsights()` enriches the template sections with AI clinical depth
 - ~85% token reduction per clinical report (~400 tokens vs ~2700 previously)

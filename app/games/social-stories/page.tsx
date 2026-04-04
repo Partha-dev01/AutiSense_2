@@ -251,7 +251,7 @@ export default function SocialStoriesPage() {
   const startGame = useCallback(() => {
     const config = getDifficulty("social-stories", "default");
     const count = Math.min(config.itemCount, SCENARIOS.length);
-    setScenarios(shuffle(SCENARIOS).slice(0, count));
+    setScenarios(shuffle(SCENARIOS).slice(0, count).map(s => ({ ...s, options: shuffle(s.options) })));
     setCurrentIndex(0);
     setCorrect(0);
     setSelectedOption(null);
@@ -315,7 +315,7 @@ export default function SocialStoriesPage() {
 
       <div className="main fade fade-1" style={{ maxWidth: 620, padding: "40px 28px 80px" }}>
         <Link
-          href="/games"
+          href="/kid-dashboard/games"
           className="btn btn-outline"
           style={{
             minHeight: 40,
@@ -536,7 +536,7 @@ export default function SocialStoriesPage() {
               <button onClick={startGame} className="btn btn-primary" style={{ minWidth: 160 }}>
                 Play Again
               </button>
-              <Link href="/games" className="btn btn-outline" style={{ minWidth: 160 }}>
+              <Link href="/kid-dashboard/games" className="btn btn-outline" style={{ minWidth: 160 }}>
                 All Games
               </Link>
             </div>

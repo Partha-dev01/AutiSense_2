@@ -24,6 +24,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "AutiSense — AI-Powered Autism Screening",
   description: "Privacy-first, AI-powered autism screening platform with real-time behavioral analysis, DSM-5 aligned clinical reports, and adaptive therapy games.",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/logo.jpeg",
+  },
 };
 
 export default function RootLayout({

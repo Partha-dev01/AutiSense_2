@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
+import DOMPurify from "dompurify";
 import { useAuthGuard } from "../../hooks/useAuthGuard";
 import type { WeeklyReport } from "../../types/gameActivity";
 import { db } from "../../lib/db/schema";
@@ -167,9 +168,11 @@ export default function ReportsPage() {
             </div>
             <div
               dangerouslySetInnerHTML={{
-                __html: view === "kid"
-                  ? splitHtml(selectedReport.reportHtml).kid
-                  : splitHtml(selectedReport.reportHtml).parent,
+                __html: DOMPurify.sanitize(
+                  view === "kid"
+                    ? splitHtml(selectedReport.reportHtml).kid
+                    : splitHtml(selectedReport.reportHtml).parent,
+                ),
               }}
             />
           </div>

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "npx playwright test",
+    "test:unit": "vitest run",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "@mediapipe/tasks-vision": "^0.10.32",
     "chart.js": "^4.5.1",
     "dexie": "^4.3.0",
+    "dompurify": "^3.3.3",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.577.0",
     "next": "16.1.6",
@@ -36,6 +38,8 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/aws-lambda": "^8.10.161",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^20",
@@ -43,7 +47,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "jsdom": "^27.0.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }

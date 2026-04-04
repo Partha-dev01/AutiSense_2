@@ -40,10 +40,27 @@ self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
     switch (msg.type) {
       case "init": {
         console.log("[Worker] Loading ONNX models...");
-        const t0 = performance.now();
-        await pipeline.init();
-        console.log(`[Worker] Models loaded in ${(performance.now() - t0).toFixed(0)}ms`);
-        post({ type: "initialized" });
+        const MAX_RETRIES = 3;
+        const DELAYS = [1000, 2000, 4000];
+        let lastError: unknown;
+
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+          try {
+            if (attempt > 0) {
+              console.log(`[Worker] Retry ${attempt}/${MAX_RETRIES}...`);
+              await new Promise(r => setTimeout(r, DELAYS[attempt - 1]));
+            }
+            const t0 = performance.now();
+            await pipeline.init();
+            console.log(`[Worker] Models loaded in ${(performance.now() - t0).toFixed(0)}ms`);
+            post({ type: "initialized" });
+            lastError = null;
+            break;
+          } catch (err) {
+            lastError = err;
+          }
+        }
+        if (lastError) throw lastError;
         break;
       }
 

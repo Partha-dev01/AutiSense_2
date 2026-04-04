@@ -16,7 +16,7 @@ interface SpeechRec {
 import { addGameActivity } from "../../lib/db/gameActivity.repository";
 import { updateStreak } from "../../lib/db/streak.repository";
 import { useAuthGuard } from "../../hooks/useAuthGuard";
-import { speakText, checkMicSupport } from "../../lib/audio/ttsHelper";
+import { speakText, checkMicSupport, stopSpeaking } from "../../lib/audio/ttsHelper";
 import NavLogo from "../../components/NavLogo";
 import UserMenu from "../../components/UserMenu";
 import ThemeToggle from "../../components/ThemeToggle";
@@ -168,6 +168,11 @@ export default function SpeechPracticePage() {
 
   /* ---------- speech recognition attempt ---------- */
   const attemptSpeech = useCallback(async () => {
+    // Cancel any ongoing TTS to free the audio subsystem for SpeechRecognition
+    stopSpeaking();
+    setPlayingAudio(false);
+    await new Promise(r => setTimeout(r, 300));
+
     // Check mic permissions first
     const mic = await checkMicSupport();
     if (!mic.supported || !mic.permitted) {

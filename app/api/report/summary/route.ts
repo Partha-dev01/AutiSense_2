@@ -32,7 +32,7 @@ function getBedrockClient(): BedrockRuntimeClient {
   return new BedrockRuntimeClient({ region: BEDROCK_REGION, ...(credentials && { credentials }) });
 }
 
-function buildMockSummary(biomarkers: BiomarkerAggregate): string {
+function buildTemplateSummary(biomarkers: BiomarkerAggregate): string {
   const risk = biomarkers.overallScore < 50 ? "elevated" : "low";
   return [
     `Based on the screening session (${biomarkers.sampleCount} data points collected), your child's overall developmental score is ${biomarkers.overallScore}/100. This places them in the ${risk}-risk category for further evaluation.`,
@@ -96,12 +96,12 @@ Important guidelines:
     const summary =
       responseBody?.output?.message?.content?.[0]?.text ??
       responseBody?.completion ??
-      buildMockSummary(biomarkers);
+      buildTemplateSummary(biomarkers);
 
     return NextResponse.json({ summary, fallback: false });
   } catch (err) {
     console.error("[Report/Summary] Bedrock invocation failed:", err);
     // Graceful degradation: return mock summary on error
-    return NextResponse.json({ summary: buildMockSummary(biomarkers), fallback: true });
+    return NextResponse.json({ summary: buildTemplateSummary(biomarkers), fallback: true });
   }
 }
