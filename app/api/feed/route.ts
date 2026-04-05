@@ -276,7 +276,7 @@ function toClient(post: FeedPostItem) {
     content: post.content,
     category: post.category,
     reactions: post.reactions,
-    // Only expose reaction counts, not who reacted (privacy)
+    reactedBy: post.reactedBy || { heart: [], helpful: [], relate: [] },
     createdAt: post.createdAt,
     anonymous: post.anonymous,
   };

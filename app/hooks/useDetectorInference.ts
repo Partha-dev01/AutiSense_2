@@ -143,9 +143,11 @@ export function useDetectorInference(
   }, [videoRef, canvasRef, isCamReady, isModelLoaded]);
 
   useEffect(() => {
+    // Only start the rAF loop when camera + models are both ready
+    if (!isCamReady || !isModelLoaded) return;
     rafRef.current = requestAnimationFrame(sendFrame);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [sendFrame]);
+  }, [sendFrame, isCamReady, isModelLoaded]);
 
   const resetPipeline = useCallback(() => {
     workerRef.current?.postMessage({ type: "reset" });

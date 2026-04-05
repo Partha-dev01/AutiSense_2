@@ -47,27 +47,18 @@ const REACTION_CONFIG = [
 
 export default function FeedPage() {
   const { theme, toggle: toggleTheme } = useTheme();
-  const { loading: authLoading, isAuthenticated } = useAuthGuard();
+  const { loading: authLoading, isAuthenticated, user } = useAuthGuard();
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [filter, setFilter] = useState<Category>("all");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState<FeedPost["category"]>("tip");
   const [posting, setPosting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState("");
   const [showCompose, setShowCompose] = useState(false);
   const [anonymous, setAnonymous] = useState(true);
 
-  // Get current user ID from session
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    fetch("/api/auth/session")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.user?.id) setUserId(data.user.id);
-      })
-      .catch(() => {});
-  }, [isAuthenticated]);
+  // Use user ID from auth context (no duplicate fetch)
+  const userId = user?.id || "";
 
   const loadPosts = useCallback(async () => {
     try {

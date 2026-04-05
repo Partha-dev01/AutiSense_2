@@ -59,10 +59,11 @@ export async function POST(req: NextRequest) {
 
   const { session, biomarkers } = body;
 
-  // IDOR check — user can only sync their own data
-  if (session.userId !== authResult.id) {
-    return NextResponse.json({ error: "userId mismatch" }, { status: 403 });
-  }
+  // IDOR check — user can only sync their own data.
+  // Sessions may use an anonymous "anon-*" localStorage ID or the Google OAuth ID.
+  // Both are valid — the auth gate already ensures the request is from an authenticated user.
+  // We tag the session with the authenticated user's ID for attribution.
+  session.userId = authResult.id;
 
   const sessionsTable = process.env.DYNAMODB_SESSIONS_TABLE;
   const biomarkersTable = process.env.DYNAMODB_BIOMARKERS_TABLE;

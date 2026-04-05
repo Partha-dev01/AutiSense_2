@@ -6,6 +6,7 @@ import DOMPurify from "dompurify";
 import { useAuthGuard } from "../../hooks/useAuthGuard";
 import type { WeeklyReport } from "../../types/gameActivity";
 import { db } from "../../lib/db/schema";
+import { generateWeeklyReport, renderKidReport, renderParentReport } from "../../lib/reports/weeklyReport";
 import NavLogo from "../../components/NavLogo";
 import ThemeToggle from "../../components/ThemeToggle";
 import { useTheme } from "../../hooks/useTheme";
@@ -52,16 +53,28 @@ export default function ReportsPage() {
   const generateReport = async () => {
     setGenerating(true);
     try {
-      const res = await fetch("/api/report/weekly", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ childId, childName }),
+      // Generate client-side (weekly reports use IndexedDB data, not server API)
+      const data = await generateWeeklyReport(childId);
+      const name = childName || "Superstar";
+      const kidHtml = renderKidReport(data, name);
+      const parentHtml = renderParentReport(data, name);
+      const combinedHtml = `<!-- KID -->${kidHtml}<!-- SPLIT --><!-- PARENT -->${parentHtml}`;
+
+      await db.weeklyReports.add({
+        childId: data.childId,
+        weekStart: data.weekStart,
+        weekEnd: data.weekEnd,
+        gamesPlayed: data.gamesPlayed,
+        avgScore: data.avgScore,
+        topGame: data.topGame,
+        streakDays: data.streakDays,
+        reportHtml: combinedHtml,
+        generatedAt: Date.now(),
+        emailed: false,
       });
-      if (res.ok) {
-        await loadReports();
-      }
+      await loadReports();
     } catch {
-      // silently fail
+      // IndexedDB or generation error — silently fail
     } finally {
       setGenerating(false);
     }
