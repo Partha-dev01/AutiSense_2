@@ -34,6 +34,12 @@ Environment variables are configured in the Amplify Console:
 
 > **Warning**: `aws amplify update-app --environment-variables` REPLACES the entire map. Always pass ALL vars when using the CLI. Use the Amplify Console UI for safer edits.
 
+### CRITICAL: next.config.ts env: Block
+
+**Amplify WEB_COMPUTE does NOT inject env vars into the Lambda runtime at request time.** Every env var needed by API routes MUST be listed in the `next.config.ts env:` block to be baked at build time. This includes secrets (`APP_ACCESS_KEY_ID`, `APP_SECRET_ACCESS_KEY`, `GOOGLE_CLIENT_SECRET`).
+
+**Never remove ANY variable from the `env:` block** without verifying the Lambda can still read it. Removing credentials broke DynamoDB, Bedrock, Polly, and auth — twice (2026-04-05).
+
 ## Testing
 
 ```bash
