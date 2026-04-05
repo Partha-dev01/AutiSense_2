@@ -1,6 +1,8 @@
 # AutiSense
 
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
+[![CI](https://github.com/Partha-dev01/AutiSense_2/actions/workflows/ci.yml/badge.svg)](https://github.com/Partha-dev01/AutiSense_2/actions/workflows/ci.yml)
+[![Next.js](https://img.shields.io/badge/Next.js-16.2-black?logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![ONNX Runtime](https://img.shields.io/badge/ONNX_Runtime-Web-blue)](https://onnxruntime.ai/)
 [![AWS](https://img.shields.io/badge/AWS-Bedrock%20%7C%20Polly%20%7C%20DynamoDB-FF9900?logo=amazon-web-services&logoColor=white)](https://aws.amazon.com/)
@@ -10,7 +12,9 @@
 
 AutiSense is a web application that captures behavioral biomarkers using real-time on-device AI inference. Four ONNX models run entirely in the browser -- no video, audio, or inference data ever leaves the device during screening. Cloud services enrich the experience with generative AI reports, text-to-speech, and cross-device data sync, all with graceful offline fallbacks.
 
-**Live**: [https://main.d2n7pu2vtgi8yc.amplifyapp.com](https://main.d2n7pu2vtgi8yc.amplifyapp.com)
+**Live**: [https://autisense.imaginaerium.in](https://autisense.imaginaerium.in)
+
+![AutiSense Landing Page](public/home.png)
 
 ---
 
@@ -30,7 +34,7 @@ AutiSense is a web application that captures behavioral biomarkers using real-ti
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Next.js 16.1.6 (App Router, React 19) |
+| Framework | Next.js 16.2.2 (App Router, React 19.2.4) |
 | Language | TypeScript 5 |
 | Styling | Tailwind CSS v4 + CSS custom properties |
 | State | Zustand (global) + React useState (local) |
@@ -43,7 +47,8 @@ AutiSense is a web application that captures behavioral biomarkers using real-ti
 | Auth | Custom Google OAuth 2.0 + DynamoDB sessions |
 | Charts | Recharts (dashboard) + Chart.js (detector) |
 | PDF | pdf-lib (server-side generation) |
-| Testing | Playwright 1.58.2 |
+| E2E Testing | Playwright 1.58.2 (97 tests) |
+| Unit Testing | Vitest 3.2.4 (68 tests) |
 | Hosting | AWS Amplify (WEB_COMPUTE SSR) |
 
 ---
@@ -153,7 +158,8 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ```bash
 npm run build
-npx playwright test    # 32 Playwright tests
+npm run test:unit      # 68 Vitest unit tests
+npx playwright test    # 97 Playwright E2E tests
 ```
 
 ---
@@ -185,7 +191,8 @@ AutiSense_2/
 │   └── types/             6 type modules
 ├── public/models/         4 ONNX models (~47 MB total)
 ├── server/                Lambda handler + DynamoDB setup script
-├── tests/                 2 Playwright spec files (32 tests)
+├── __tests__/             7 Vitest unit test files (68 tests)
+├── tests/                 4 Playwright E2E spec files (97 tests)
 ├── workers/               ONNX inference Web Worker
 └── docs/                  DOCS.md, SETUP_GUIDE.md, Amazon_usage.md
 ```
