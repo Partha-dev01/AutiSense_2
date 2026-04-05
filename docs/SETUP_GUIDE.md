@@ -3,8 +3,8 @@
 ## Quick Start
 
 ```bash
-git clone https://github.com/Partha-dev01/AutiSense_2.git
-cd AutiSense_2
+git clone https://github.com/Partha-dev01/AutiSense.git
+cd AutiSense
 npm install
 cp .env.local.example .env.local
 # Fill in .env.local with your values

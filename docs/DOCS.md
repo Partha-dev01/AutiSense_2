@@ -96,7 +96,7 @@ Server (Amplify SSR / Lambda)
 ## Project Structure
 
 ```
-AutiSense_2/
+AutiSense/
 ├── .env.local                          — Local environment variables (not committed)
 ├── .env.local.example                  — Template for required env vars
 ├── .nvmrc                              — Node.js version pin

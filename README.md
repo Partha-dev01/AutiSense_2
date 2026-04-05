@@ -1,6 +1,6 @@
 # AutiSense
 
-[![CI](https://github.com/Partha-dev01/AutiSense_2/actions/workflows/ci.yml/badge.svg)](https://github.com/Partha-dev01/AutiSense_2/actions/workflows/ci.yml)
+[![CI](https://github.com/Partha-dev01/AutiSense/actions/workflows/ci.yml/badge.svg)](https://github.com/Partha-dev01/AutiSense/actions/workflows/ci.yml)
 [![Next.js](https://img.shields.io/badge/Next.js-16.2-black?logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -115,8 +115,8 @@ Additional features: AI chat with animal avatars (dog/cat/rabbit/parrot), speech
 ### Installation
 
 ```bash
-git clone https://github.com/Partha-dev01/AutiSense_2.git
-cd AutiSense_2
+git clone https://github.com/Partha-dev01/AutiSense.git
+cd AutiSense
 npm install
 ```
 
@@ -167,7 +167,7 @@ npx playwright test    # 97 Playwright E2E tests
 ## Project Structure
 
 ```
-AutiSense_2/
+AutiSense/
 ├── app/
 │   ├── api/               14 API routes (auth, chat, feed, nearby, report, sync, tts)
 │   ├── auth/              Login page
