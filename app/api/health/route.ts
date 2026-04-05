@@ -18,13 +18,16 @@ export async function GET() {
     const { getAppCredentials, getAppRegion } = await import("../../lib/aws/credentials");
     const creds = getAppCredentials();
     if (creds || process.env.AWS_REGION) {
-      const { DynamoDBClient, DescribeTableCommand } = await import("@aws-sdk/client-dynamodb");
+      const { DynamoDBClient } = await import("@aws-sdk/client-dynamodb");
+      const { DynamoDBDocumentClient, GetCommand } = await import("@aws-sdk/lib-dynamodb");
       const table = process.env.DYNAMODB_USERS_TABLE || "autisense-users";
       const client = new DynamoDBClient({
         region: getAppRegion("ap-south-1"),
         ...(creds && { credentials: creds }),
       });
-      await client.send(new DescribeTableCommand({ TableName: table }));
+      const docClient = DynamoDBDocumentClient.from(client);
+      // Use GetItem (allowed by IAM policy) instead of DescribeTable (not allowed)
+      await docClient.send(new GetCommand({ TableName: table, Key: { id: "__health_check__" } }));
       checks.dynamodb = "ok";
     } else {
       checks.dynamodb = "no_credentials";
