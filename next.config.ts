@@ -38,10 +38,12 @@ const nextConfig: NextConfig = {
     DYNAMODB_SESSION_SUMMARIES_TABLE: process.env.DYNAMODB_SESSION_SUMMARIES_TABLE ?? "",
     DYNAMODB_FEED_POSTS_TABLE: process.env.DYNAMODB_FEED_POSTS_TABLE ?? "",
     APP_REGION: process.env.APP_REGION ?? "",
-    // SECURITY: APP_ACCESS_KEY_ID, APP_SECRET_ACCESS_KEY are NOT baked here —
-    // read at runtime via process.env (Lambda IAM role or APP_* env vars).
-    // GOOGLE_CLIENT_SECRET is baked because Amplify WEB_COMPUTE does not
-    // reliably inject branch-level env vars into the Lambda runtime.
+    // Amplify WEB_COMPUTE does not reliably inject env vars into the Lambda
+    // runtime — all vars needed at request time must be baked at build time.
+    // These are server-only (no NEXT_PUBLIC_ prefix) so they stay in the
+    // server bundle and are never sent to the browser.
+    APP_ACCESS_KEY_ID: process.env.APP_ACCESS_KEY_ID ?? "",
+    APP_SECRET_ACCESS_KEY: process.env.APP_SECRET_ACCESS_KEY ?? "",
   },
 
   // Security + COOP/COEP headers (SharedArrayBuffer for ONNX WASM)
