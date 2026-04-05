@@ -406,18 +406,20 @@ All API routes have **mock fallbacks** — the app works without AWS credentials
 
 ### IndexedDB Schema (Dexie v5)
 
-| Table | Primary Key | Indexes | Purpose |
-|-------|-------------|---------|---------|
-| `sessions` | `id` | `userId`, `createdAt`, `synced`, `status` | Screening sessions |
-| `biomarkers` | `++id` (auto) | `sessionId`, `userId`, `timestamp`, `taskId` | Per-task biomarker data |
-| `syncQueue` | `++id` (auto) | `sessionId`, `queuedAt`, `retryCount` | Offline sync queue |
-| `childProfiles` | `id` | `userId`, `createdAt` | Child profiles |
-| `feedPosts` | `++id` (auto) | `userId`, `createdAt` | Community feed posts |
-| `feedReactions` | `++id` (auto) | `[postId+userId+type]`, `postId`, `userId` | Per-user reaction tracking |
-| `gameActivity` | `++id` (auto) | `childId`, `date`, `gameId` | Game session records |
-| `streaks` | `childId` | — | Daily play streak tracking |
-| `weeklyReports` | `++id` (auto) | `childId`, `weekStart` | Weekly progress summaries |
-| `chatHistory` | `++id` (auto) | `childId`, `createdAt` | AI chat conversations |
+> **Important**: All IndexedDB data is stored in the user's browser only. Game progress, streaks, weekly reports, and chat history do NOT sync to the cloud. Switching devices or clearing browser data resets this data. Only `sessions` and `biomarkers` sync to DynamoDB (opt-in, anonymized).
+
+| Table | Primary Key | Indexes | Syncs to Cloud? |
+|-------|-------------|---------|-----------------|
+| `sessions` | `id` | `userId`, `createdAt`, `synced`, `status` | **Yes** (opt-in, anonymized) |
+| `biomarkers` | `++id` (auto) | `sessionId`, `userId`, `timestamp`, `taskId` | **Yes** (opt-in, anonymized) |
+| `syncQueue` | `++id` (auto) | `sessionId`, `queuedAt`, `retryCount` | N/A (queue mechanism) |
+| `childProfiles` | `id` | `userId`, `createdAt` | **No** (local only) |
+| `gameActivity` | `++id` (auto) | `childId`, `date`, `gameId` | **No** (local only) |
+| `streaks` | `childId` | — | **No** (local only) |
+| `weeklyReports` | `++id` (auto) | `childId`, `weekStart` | **No** (local only) |
+| `chatHistory` | `++id` (auto) | `childId`, `createdAt` | **No** (local only) |
+| `feedPosts` | `++id` (auto) | `userId`, `createdAt` | **No** (unused — API serves feed) |
+| `feedReactions` | `++id` (auto) | `[postId+userId+type]`, `postId`, `userId` | **No** (unused — API serves feed) |
 
 ### Biomarker Fields
 

@@ -199,13 +199,31 @@ AutiSense/
 
 ---
 
-## Privacy Architecture
+## Data Architecture
+
+### What's stored where
+
+| Data | Storage | Syncs to Cloud? | Cross-Device? |
+|------|---------|-----------------|---------------|
+| **Screening sessions** | IndexedDB → DynamoDB | Yes (opt-in, anonymized) | Yes (after sync) |
+| **Biomarker scores** | IndexedDB → DynamoDB | Yes (opt-in, anonymized) | Yes (after sync) |
+| **User account** | DynamoDB | Always (Google OAuth) | Yes |
+| **Game progress & scores** | IndexedDB only | No | No |
+| **Daily streaks** | IndexedDB only | No | No |
+| **Weekly reports** | IndexedDB only | No | No |
+| **Chat history** | IndexedDB only | No | No |
+| **Child profiles** | IndexedDB only | No | No |
+| **Difficulty levels** | localStorage only | No | No |
+
+> **Note**: Game progress, streaks, and weekly reports are stored locally in the browser only. Switching devices or clearing browser data will reset this data. This is by design -- game activity data never leaves the device.
+
+### Privacy architecture
 
 AutiSense follows a **zero-egress screening** model:
 
 1. **On-device inference** -- All 4 AI models (YOLO, BodyTCN, FER+, FaceTCN) run in a Web Worker via ONNX Runtime Web. No video frames, keypoints, or inference results are transmitted to any server.
-2. **Local-first storage** -- All screening data lives in IndexedDB (Dexie). The app works fully offline.
-3. **Opt-in cloud sync** -- An explicit consent checkbox at Step 10 controls whether anonymized biomarker scores are synced to DynamoDB. Child names are stripped before upload.
+2. **Local-first storage** -- All game and screening data lives in IndexedDB (Dexie). The app works fully offline.
+3. **Opt-in cloud sync** -- Only anonymized screening sessions and biomarker scores are synced to DynamoDB. Child names are stripped before upload. Game activity stays local.
 4. **Cloud AI enrichment** -- Only aggregated biomarker scores (not raw data) are sent to Amazon Bedrock for report generation. This step is optional and has template-based fallbacks.
 5. **Data expiry** -- DynamoDB records have a 365-day TTL and auto-expire.
 
