@@ -9,6 +9,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/app/lib/logger";
+
+const log = logger("nearby");
 
 interface NearbyResult {
   id: number;
@@ -117,7 +120,7 @@ export async function POST(req: NextRequest) {
       },
     );
   } catch (err) {
-    console.error("[Nearby] Overpass query failed:", err);
+    log.error("Overpass query failed", { error: err });
     return NextResponse.json(
       { error: "Failed to query nearby facilities", results: [], source: "overpass" },
       { status: 500 },

@@ -37,7 +37,7 @@ AutiSense is a web application that captures behavioral biomarkers using real-ti
 | Framework | Next.js 16.2.2 (App Router, React 19.2.4) |
 | Language | TypeScript 5 |
 | Styling | Tailwind CSS v4 + CSS custom properties |
-| State | Zustand (global) + React useState (local) |
+| State | React useState (local) + React Context (auth) |
 | On-device AI | ONNX Runtime Web 1.24.2 (WebGPU/WASM) |
 | Face Analysis | @mediapipe/tasks-vision (478 landmarks, 52 blendshapes) |
 | Client Database | Dexie.js v4 (IndexedDB, 10 tables) |

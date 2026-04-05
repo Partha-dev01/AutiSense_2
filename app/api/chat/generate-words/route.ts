@@ -18,6 +18,9 @@ import {
   InvokeModelCommand,
 } from "@aws-sdk/client-bedrock-runtime";
 import { getAppCredentials } from "../../../lib/aws/credentials";
+import { logger } from "../../../lib/logger";
+
+const log = logger("chat/generate-words");
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -287,7 +290,7 @@ export async function POST(request: NextRequest) {
       fallback: true,
     });
   } catch (err) {
-    console.error("[generate-words] Unexpected error:", err);
+    log.error("Unexpected error", { error: err });
     return NextResponse.json(
       { error: "Failed to generate words" },
       { status: 500 },

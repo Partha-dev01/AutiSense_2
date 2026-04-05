@@ -21,6 +21,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { PDFDocument, rgb, StandardFonts, PDFPage } from "pdf-lib";
+import { logger } from "../../../lib/logger";
+
+const log = logger("report/pdf");
 
 interface PdfRequestBody {
   report: string;
@@ -565,7 +568,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err) {
-    console.error("[Report/PDF] PDF generation failed:", err);
+    log.error("PDF generation failed", { error: err });
     return NextResponse.json({ error: "Failed to generate PDF" }, { status: 500 });
   }
 }

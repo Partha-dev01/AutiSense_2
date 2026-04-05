@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { AUTH_CONFIG } from "@/app/lib/auth/config";
 import { getAuthSession, getUserById } from "@/app/lib/auth/dynamodb";
 import { getAppCredentials, getAppRegion } from "@/app/lib/aws/credentials";
+import { logger } from "@/app/lib/logger";
+
+const log = logger("feed");
 
 /**
  * Community Feed API — DynamoDB table: autisense-feed-posts
@@ -93,7 +96,7 @@ export async function GET(request: NextRequest) {
         source: "dynamodb",
       });
     } catch (err) {
-      console.error("[feed] DynamoDB GET failed, falling back:", err);
+      log.error("DynamoDB GET failed, falling back", { error: err });
       dynamoFailedUntil = Date.now() + 30_000;
     }
   }
@@ -160,7 +163,7 @@ async function handleCreate(body: Record<string, unknown>, userId: string) {
       await docClient.send(new PutCommand({ TableName: TABLE, Item: post }));
       return NextResponse.json({ success: true, post: toClient(post), source: "dynamodb" });
     } catch (err) {
-      console.error("[feed] DynamoDB PUT failed, falling back:", err);
+      log.error("DynamoDB PUT failed, falling back", { error: err });
       dynamoFailedUntil = Date.now() + 30_000;
     }
   }
@@ -218,7 +221,7 @@ async function handleReaction(body: Record<string, unknown>, userId: string) {
         return NextResponse.json({ toggled: true });
       }
     } catch (err) {
-      console.error("[feed] DynamoDB reaction failed, falling back:", err);
+      log.error("DynamoDB reaction failed, falling back", { error: err });
       dynamoFailedUntil = Date.now() + 30_000;
     }
   }
@@ -264,7 +267,7 @@ async function handleDelete(body: Record<string, unknown>, userId: string) {
       await docClient.send(new DeleteCommand({ TableName: TABLE, Key: key }));
       return NextResponse.json({ success: true });
     } catch (err) {
-      console.error("[feed] DynamoDB delete failed, falling back:", err);
+      log.error("DynamoDB delete failed, falling back", { error: err });
       dynamoFailedUntil = Date.now() + 30_000;
     }
   }

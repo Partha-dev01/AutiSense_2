@@ -20,6 +20,9 @@ import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import type { SessionSyncPayload } from "../../types/session";
 import type { BiomarkerAggregate } from "../../types/biomarker";
 import { getAppCredentials, getAppRegion } from "../../lib/aws/credentials";
+import { logger } from "../../lib/logger";
+
+const log = logger("sync");
 
 function getDocClient() {
   const credentials = getAppCredentials();
@@ -68,7 +71,7 @@ export async function POST(req: NextRequest) {
   const sessionsTable = process.env.DYNAMODB_SESSIONS_TABLE;
   const biomarkersTable = process.env.DYNAMODB_BIOMARKERS_TABLE;
   if (!sessionsTable) {
-    console.error("[Sync API] DYNAMODB_SESSIONS_TABLE not configured");
+    log.error("DYNAMODB_SESSIONS_TABLE not configured");
     return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
   }
 
@@ -107,7 +110,7 @@ export async function POST(req: NextRequest) {
         note: "already_exists",
       });
     }
-    console.error("[Sync API] DynamoDB sessions write failed:", err);
+    log.error("DynamoDB sessions write failed", { error: err });
     return NextResponse.json(
       { error: "Failed to write session" },
       { status: 500 },
@@ -141,7 +144,7 @@ export async function POST(req: NextRequest) {
         }),
       );
     } catch (err) {
-      console.error("[Sync API] DynamoDB biomarkers write failed:", err);
+      log.error("DynamoDB biomarkers write failed", { error: err });
     }
   }
 

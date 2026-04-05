@@ -13,6 +13,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_CONFIG } from "@/app/lib/auth/config";
 import { upsertGoogleUser, createSessionForUser } from "@/app/lib/auth/dynamodb";
+import { logger } from "@/app/lib/logger";
+
+const log = logger("auth/callback");
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -25,7 +28,7 @@ export async function GET(request: NextRequest) {
 
   // ─── Error from Google ──────────────────────────────────────────
   if (error) {
-    console.error("[auth/callback/google] OAuth error:", error);
+    log.error("OAuth error", { error });
     return NextResponse.redirect(`${appUrl}/auth/login?error=${encodeURIComponent(error)}`);
   }
 
@@ -56,7 +59,7 @@ export async function GET(request: NextRequest) {
 
     if (!tokenResponse.ok) {
       const errorBody = await tokenResponse.text();
-      console.error("[auth/callback/google] Token exchange failed:", errorBody);
+      log.error("Token exchange failed", { error: errorBody });
       return NextResponse.redirect(`${appUrl}/auth/login?error=token_exchange_failed`);
     }
 
@@ -74,7 +77,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!profileResponse.ok) {
-      console.error("[auth/callback/google] Profile fetch failed:", profileResponse.status);
+      log.error("Profile fetch failed", { error: profileResponse.status });
       return NextResponse.redirect(`${appUrl}/auth/login?error=profile_fetch_failed`);
     }
 
@@ -120,7 +123,7 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (err) {
-    console.error("[auth/callback/google] Unexpected error:", err);
+    log.error("Unexpected error", { error: err });
     return NextResponse.redirect(`${appUrl}/auth/login?error=server_error`);
   }
 }

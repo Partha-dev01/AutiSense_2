@@ -19,6 +19,9 @@ import {
   type VoiceId,
 } from "@aws-sdk/client-polly";
 import { getAppCredentials, getAppRegion } from "../../lib/aws/credentials";
+import { logger } from "../../lib/logger";
+
+const log = logger("tts");
 
 interface TtsRequestBody {
   text: string;
@@ -119,7 +122,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err) {
-    console.error("[TTS] Polly synthesis failed:", err);
+    log.error("Polly synthesis failed", { error: err });
     return NextResponse.json(
       { error: "Text-to-Speech synthesis failed" },
       { status: 503 },

@@ -19,6 +19,9 @@ import {
   InvokeModelCommand,
 } from "@aws-sdk/client-bedrock-runtime";
 import { getAppCredentials } from "../../../lib/aws/credentials";
+import { logger } from "../../../lib/logger";
+
+const log = logger("chat/conversation");
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -335,19 +338,19 @@ export async function POST(req: NextRequest) {
       "";
 
     if (!rawText) {
-      console.warn("[Chat] Empty response from Bedrock, using fallback");
+      log.warn("Empty response from Bedrock, using fallback");
       return NextResponse.json(buildFallbackTurn(childName, turnNumber, animalPersonality));
     }
 
     const parsed = parseAgentResponse(rawText);
     if (!parsed) {
-      console.warn("[Chat] Failed to parse LLM JSON, using fallback. Raw:", rawText);
+      log.warn("Failed to parse LLM JSON, using fallback", { raw: rawText });
       return NextResponse.json(buildFallbackTurn(childName, turnNumber, animalPersonality));
     }
 
     return NextResponse.json({ ...parsed, fallback: false } satisfies ConversationResponse);
   } catch (err) {
-    console.error("[Chat] Bedrock invocation failed:", err);
+    log.error("Bedrock invocation failed", { error: err });
     return NextResponse.json(buildFallbackTurn(childName, turnNumber, animalPersonality));
   }
 }

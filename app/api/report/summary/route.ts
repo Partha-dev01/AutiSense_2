@@ -19,6 +19,9 @@ import {
 } from "@aws-sdk/client-bedrock-runtime";
 import type { BiomarkerAggregate } from "../../../types/biomarker";
 import { getAppCredentials } from "../../../lib/aws/credentials";
+import { logger } from "../../../lib/logger";
+
+const log = logger("report/summary");
 
 interface SummaryRequestBody {
   sessionId: string;
@@ -116,7 +119,7 @@ Important guidelines:
 
     return NextResponse.json({ summary, fallback: false });
   } catch (err) {
-    console.error("[Report/Summary] Bedrock invocation failed:", err);
+    log.error("Bedrock invocation failed", { error: err });
     return NextResponse.json({ summary: buildTemplateSummary(biomarkers), fallback: true });
   }
 }

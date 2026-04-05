@@ -8,6 +8,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_CONFIG } from "@/app/lib/auth/config";
 import { getAuthSession, getUserById } from "@/app/lib/auth/dynamodb";
+import { logger } from "@/app/lib/logger";
+
+const log = logger("auth/session");
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get(AUTH_CONFIG.sessionCookieName)?.value;
@@ -38,7 +41,7 @@ export async function GET(request: NextRequest) {
       authenticated: true,
     });
   } catch (err) {
-    console.error("[auth/session] Error validating session:", err);
+    log.error("Error validating session", { error: err });
     return NextResponse.json({ user: null, authenticated: false }, { status: 401 });
   }
 }

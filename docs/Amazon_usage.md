@@ -312,8 +312,8 @@ frontend:
 |---------|-------|
 | **Bucket** | `autisense-models-762099405044` |
 | **Region** | ap-south-1 |
-| **SDK** | `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner` installed |
-| **Status** | Configured but **not actively used** |
+| **SDK** | Removed (`@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` uninstalled — zero usage in code) |
+| **Status** | Bucket exists for backup. **Not used at runtime** — models served from `public/` via CDN |
 
 **Current approach**: ONNX models (YOLO26n, BodyTCN, FaceTCN, FER+) are served from `public/models/` as static assets via Amplify's CloudFront CDN. This is simpler and faster for the 4 small models (~5-15 MB each). S3 bucket exists as a future option for larger model storage or versioned model management.
 
@@ -465,7 +465,7 @@ The core screening pipeline runs entirely in the browser using ONNX Runtime Web.
 | `APP_REGION` | No | ap-south-1 | All AWS clients | Primary AWS region |
 | `BEDROCK_REGION` | No | us-east-1 | Bedrock routes | Bedrock-specific region (Nova availability) |
 | `POLLY_REGION` | No | ap-south-1 | TTS route | Polly-specific region |
-| `S3_MODELS_BUCKET` | No | — | Not actively used | S3 bucket for model storage |
+| `S3_MODELS_BUCKET` | No | — | Not used at runtime | S3 bucket name (kept for future use) |
 
 ### DynamoDB Table Name Variables
 

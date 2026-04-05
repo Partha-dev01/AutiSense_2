@@ -80,7 +80,7 @@ Server (Amplify SSR / Lambda)
 | Language | TypeScript 5 |
 | Styling | Tailwind CSS v4 + custom CSS variables (globals.css) |
 | Fonts | Fredoka (headings) + Nunito (body) |
-| State | Zustand (global) + React useState (local) |
+| State | React useState (local) + React Context (auth) |
 | Database (client) | Dexie.js v4 (IndexedDB wrapper) |
 | Database (server) | Amazon DynamoDB (7 tables) |
 | ML Inference | ONNX Runtime Web 1.24.2 |
@@ -377,7 +377,7 @@ All inference runs client-side in a Web Worker via ONNX Runtime Web (WebGPU or W
 | **Bedrock** (Nova Pro) | DSM-5 aligned clinical reports | `POST /api/report/clinical` |
 | **Polly** | Neural TTS voice prompts (Joanna) | `POST /api/tts` |
 | **DynamoDB** | User accounts, auth sessions, biomarkers, child profiles, feed posts | Via AWS SDK v3 |
-| **S3** | ONNX model file hosting (presigned URLs) | Via `@aws-sdk/s3-request-presigner` |
+| **S3** | ONNX model storage (models served from `public/` via CDN, not S3 at runtime) | Not used at runtime |
 | **Amplify** | Next.js SSR hosting with auto-deploy | GitHub webhook |
 
 All API routes have **mock fallbacks** — the app works without AWS credentials using template-based responses and in-memory storage.
@@ -590,7 +590,7 @@ npx playwright test    # Run all 30 tests
 | 2 | Login page shows "Loading..." briefly before rendering | Low | Open | Suspense boundary for useSearchParams — normal Next.js behavior |
 | 3 | Video capture requires camera permission — no graceful fallback UI | Low | Open | Page shows "Start Video Analysis" but camera denial has no user-friendly error |
 | 4 | SpeechRecognition not available in all browsers | Low | Open | Communication + Audio stages fall back to "missed" after timeout on unsupported browsers |
-| 5 | ONNX models loaded from public/ not S3 in production | Low | Open | Models bundled with the app (~47MB). S3 presigned URL loading is implemented but not wired to video-capture page |
+| 5 | ONNX models served from public/ via CDN | Low | By design | Models bundled with the app. S3 bucket exists for backup but is not used at runtime. |
 | 6 | ~~Feed posts are local-only (IndexedDB)~~ | Low | **Resolved** | v2.5.1: Feed now uses DynamoDB (`autisense-feed-posts` table) via `/api/feed` API route. Posts, reactions, and deletes are shared across all users. In-memory fallback for local dev. |
 | 7 | Dashboard charts show empty state for new users | Low | Open | No sample/demo data — charts appear blank until user completes at least one screening |
 

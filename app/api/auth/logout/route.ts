@@ -10,6 +10,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_CONFIG } from "@/app/lib/auth/config";
 import { deleteAuthSession } from "@/app/lib/auth/dynamodb";
+import { logger } from "@/app/lib/logger";
+
+const log = logger("auth/logout");
 
 export async function POST(request: NextRequest) {
   const token = request.cookies.get(AUTH_CONFIG.sessionCookieName)?.value;
@@ -18,7 +21,7 @@ export async function POST(request: NextRequest) {
     try {
       await deleteAuthSession(token);
     } catch (err) {
-      console.error("[auth/logout] Error deleting session:", err);
+      log.error("Error deleting session", { error: err });
       // Continue with logout even if DynamoDB delete fails
     }
   }

@@ -29,6 +29,9 @@ import {
 } from "@aws-sdk/client-bedrock-runtime";
 import type { BiomarkerAggregate } from "../../../types/biomarker";
 import { getAppCredentials } from "../../../lib/aws/credentials";
+import { logger } from "../../../lib/logger";
+
+const log = logger("report/clinical");
 
 interface ClinicalRequestBody {
   sessionId: string;
@@ -271,13 +274,13 @@ export async function POST(req: NextRequest) {
 
     const insights = parseInsights(text);
     if (!insights) {
-      console.warn("[Report/Clinical] Could not parse AI insights, using template only");
+      log.warn("Could not parse AI insights, using template only");
       return NextResponse.json({ ...baseReport, aiEnriched: false });
     }
 
     return NextResponse.json({ ...mergeAiInsights(baseReport, insights), aiEnriched: true });
   } catch (err) {
-    console.error("[Report/Clinical] Bedrock invocation failed:", err);
+    log.error("Bedrock invocation failed", { error: err });
     return NextResponse.json({ ...baseReport, aiEnriched: false });
   }
 }
