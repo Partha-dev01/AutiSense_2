@@ -11,6 +11,7 @@ import type { BiomarkerAggregate } from "../../types/biomarker";
 import type { Session } from "../../types/session";
 import { useTheme } from "../../hooks/useTheme";
 import { INTAKE_STEPS, STEP_INDEX } from "../../lib/constants/intake";
+import ThemeToggle from "../../components/ThemeToggle";
 
 const STEPS = INTAKE_STEPS;
 const STEP_IDX = STEP_INDEX.summary;
@@ -154,13 +155,7 @@ function SummaryPage() {
           <img src="/logo.jpeg" alt="" className="logo-icon" /><span>Auti<em>Sense</em></span>
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button
-            onClick={toggleTheme}
-            className="btn btn-outline"
-            style={{ minHeight: 40, padding: "8px 14px", fontSize: "0.88rem" }}
-          >
-            {theme === "light" ? "🌙" : "☀️"}
-          </button>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <span
             style={{
               fontSize: "0.88rem",
