@@ -1,6 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /api/
-Disallow: /intake/
-Disallow: /kid-dashboard/
-Sitemap: https://autisense.imaginaerium.in/sitemap.xml
